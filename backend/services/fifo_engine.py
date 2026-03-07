@@ -14,12 +14,15 @@ def match_lots(transactions: list[Transaction]) -> list[tuple[Transaction, Trans
     inventory = []
     
     for t in transactions:
-        if t.transaction_type in ['BUY', 'RSU_VEST', 'ESPP_PURCHASE']:
+        # Match "SELL" exactly or contain 'sell' in type to handle variants
+        is_sell = (t.transaction_type == 'SELL' or 'sell' in t.transaction_type.lower())
+        
+        if not is_sell:
             inventory.append({
                 'tx': t,
                 'remaining': t.shares
             })
-        elif t.transaction_type == 'SELL':
+        else:
             shares_to_sell = t.shares
             
             # Consume inventory

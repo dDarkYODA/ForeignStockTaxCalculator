@@ -33,14 +33,35 @@ def infer_schema(file_path: str) -> dict:
         except Exception:
             return {}
     else:
-        # Mock response for testing
+        # Better fallback mapping check logic using column contents
+        cols = list(df.columns)
+        mapping = {}
+        for c in cols:
+            lower_c = c.lower()
+            if 'date' in lower_c and 'date' not in mapping:
+                mapping['date'] = c
+            elif 'plan' in lower_c or 'type' in lower_c or 'action' in lower_c:
+                mapping['transaction_type'] = c
+            elif 'instrument' in lower_c or 'symbol' in lower_c or 'security' in lower_c or 'ticker' in lower_c:
+                mapping['symbol'] = c
+            elif 'quantity' in lower_c or 'shares' in lower_c or 'amount' in lower_c:
+                mapping['shares'] = c
+            elif 'cost basis' in lower_c and 'unit' not in lower_c:
+                mapping['price'] = c
+            elif 'price' in lower_c or 'value' in lower_c:
+                if 'price' not in mapping:
+                    mapping['price'] = c
+            elif 'unit' in lower_c or 'currency' in lower_c:
+                mapping['currency'] = c
+                
+        # Fill missing with safe defaults that exist or won't crash directly
         return {
-            "date": "Date",
-            "transaction_type": "Type",
-            "shares": "Amount",
-            "price": "Value",
-            "symbol": "Ticker",
-            "currency": "Currency"
+            "date": mapping.get("date", cols[0] if len(cols) > 0 else "Date"),
+            "transaction_type": mapping.get("transaction_type", cols[1] if len(cols) > 1 else "Type"),
+            "shares": mapping.get("shares", "Amount"),
+            "price": mapping.get("price", "Value"),
+            "symbol": mapping.get("symbol", "Ticker"),
+            "currency": mapping.get("currency", "Currency")
         }
 
 def parse(file_path: str, mapping: dict = None) -> list[Transaction]:
@@ -52,15 +73,24 @@ def parse(file_path: str, mapping: dict = None) -> list[Transaction]:
     
     for _, row in df.iterrows():
         try:
-            shares = float(row.get(mapping.get('shares', 'shares'), 0))
-            price = float(row.get(mapping.get('price', 'price'), 0))
+            shares_key = mapping.get('shares', 'shares')
+            price_key = mapping.get('price', 'price')
+            if shares_key not in row or price_key not in row:
+                continue
+                
+            shares = float(row.get(shares_key, 0))
+            price = float(row.get(price_key, 0))
         except ValueError:
             continue
             
+        date_key = mapping.get('date', 'date')
+        if date_key not in row:
+            continue
+            
         t = Transaction(
-            date=pd.to_datetime(row[mapping.get('date', 'date')]).date(),
-            transaction_type=row[mapping.get('transaction_type', 'transaction_type')],
-            symbol=row[mapping.get('symbol', 'symbol')],
+            date=pd.to_datetime(row[date_key]).date(),
+            transaction_type=row.get(mapping.get('transaction_type', 'transaction_type'), 'UNKNOWN'),
+            symbol=row.get(mapping.get('symbol', 'symbol'), 'UNKNOWN'),
             shares=shares,
             price=price,
             currency=row.get(mapping.get('currency', 'currency'), 'USD'),
