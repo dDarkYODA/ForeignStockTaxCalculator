@@ -1,0 +1,20 @@
+project: Foreign Stock Tax Calculator
+
+backend:
+  framework: fastapi
+  entry: backend/main.py
+
+frontend:
+  framework: react
+  build: npm run build
+
+tests:
+  command: pytest
+
+deployment:
+  provider: render
+
+rules:
+  - tax calculations must remain deterministic
+  - run tests before opening PR
+  - never modify database schema without migration

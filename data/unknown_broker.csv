@@ -1,0 +1,3 @@
+Date_Tx,Type_Tx,Ticker,Amount,Value,Currency
+2021-01-01,BUY,AAPL,10,130.0,USD
+2023-01-01,SELL,AAPL,5,150.0,USD

@@ -1,0 +1,4 @@
+Transaction Date,Plan Type,Symbol,Shares,Price
+2023-01-01,RSU_VEST,MSFT,50,250.0
+2023-06-01,SELL,MSFT,20,300.0
+2024-02-01,SELL,MSFT,30,400.0
