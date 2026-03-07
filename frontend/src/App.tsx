@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as XLSX from 'xlsx';
 import './index.css';
 
 interface Transaction {
@@ -70,6 +71,14 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(taxResults);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tax Results");
+    XLSX.writeFile(wb, "tax_results.xlsx");
   };
 
   const exportCSV = () => {
@@ -167,6 +176,12 @@ function App() {
           <div className="bg-white p-6 rounded-lg shadow overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">3. Capital Gains Results</h2>
+              <button 
+                onClick={exportExcel}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mr-2"
+              >
+                Export Excel
+              </button>
               <button 
                 onClick={exportCSV}
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
