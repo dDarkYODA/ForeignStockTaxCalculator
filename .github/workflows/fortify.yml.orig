@@ -65,10 +65,10 @@ jobs:
           ##### Fortify on Demand configuration
           ##### Remove this section if you're integrating with Fortify Hosted/Software Security Center (see below)
           ### Required configuration
-          # FOD_URL: https://ams.fortify.com                 # Must be hardcoded or configured through GitHub variable, not secret
-          # FOD_TENANT: ${{secrets.FOD_TENANT}}              # Either tenant/user/password or client id/secret are required;
-          # FOD_USER: ${{secrets.FOD_USER}}                  # these should be configured through GitHub secrets.
-          # FOD_PASSWORD: ${{secrets.FOD_PAT}}
+          FOD_URL: https://ams.fortify.com                 # Must be hardcoded or configured through GitHub variable, not secret
+          FOD_TENANT: ${{secrets.FOD_TENANT}}              # Either tenant/user/password or client id/secret are required;
+          FOD_USER: ${{secrets.FOD_USER}}                  # these should be configured through GitHub secrets.
+          FOD_PASSWORD: ${{secrets.FOD_PAT}}
           # FOD_CLIENT_ID: ${{secrets.FOD_CLIENT_ID}}
           # FOD_CLIENT_SECRET: ${{secrets.FOD_CLIENT_SECRET}}
           ### Optional configuration
