@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { confirmMapping } from '../services/api';
 import { AlertCircle, ArrowRight } from 'lucide-react';
