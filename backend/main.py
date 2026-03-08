@@ -9,9 +9,15 @@ import tempfile
 
 app = FastAPI(title="Foreign Stock Tax Calculator")
 
+# Secure CORS configuration
+# Read allowed origins from environment variable ALLOWED_ORIGINS (comma-separated list)
+# Default to an empty list to ensure no unauthorized cross-origin access.
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
