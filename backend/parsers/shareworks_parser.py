@@ -3,23 +3,27 @@ from backend.models.transaction import Transaction
 
 def parse(file_path: str) -> list[Transaction]:
     df = pd.read_csv(file_path)
-    transactions = []
     
-    for _, row in df.iterrows():
-        # Handle cases where shares/price might be missing or empty strings
-        try:
-            shares = float(row.get('Shares', 0))
-            price = float(row.get('Price', 0))
-        except ValueError:
-            continue
-            
+    # Pre-process columns to optimize the loop
+    # 1. Vectorized date conversion
+    df['Transaction Date'] = pd.to_datetime(df['Transaction Date'], errors='coerce')
+
+    # 2. Vectorized numeric conversion with error handling
+    # Convert to numeric, then drop rows with NaT/NaN in Date, Shares or Price to match original behavior (continue)
+    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
+    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+    df = df.dropna(subset=['Transaction Date', 'Shares', 'Price'])
+
+    transactions = []
+    # to_dict('records') is often faster for creating objects in a loop
+    for row in df.to_dict('records'):
         t = Transaction(
-            date=pd.to_datetime(row['Transaction Date']).date(),
+            date=row['Transaction Date'].date(),
             transaction_type=row['Plan Type'],
             symbol=row['Symbol'],
-            shares=shares,
-            price=price,
-            currency='USD', # Defaulting to USD for shareworks
+            shares=row['Shares'],
+            price=row['Price'],
+            currency='USD',
             broker='Shareworks'
         )
         transactions.append(t)
