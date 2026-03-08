@@ -48,4 +48,3 @@ async def upload_file(broker: str, file: UploadFile = File(...)):
 @app.post("/calculate", response_model=list[TaxResult])
 def calculate_tax(transactions: list[Transaction]):
     return calculate_gains(transactions)
-

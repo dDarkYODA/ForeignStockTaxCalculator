@@ -16,6 +16,8 @@ def infer_schema(file_path: str) -> dict:
             # Absolute fallback
             return {}
 
+    csv_sample = df.to_csv(index=False)
+
     cols = list(df.columns)
     mapping = {}
 
@@ -50,14 +52,67 @@ def infer_schema(file_path: str) -> dict:
         "currency": mapping.get("currency", "Currency")
     }
 
+    result = {}
+    used_fallback = False
+
+    # Normally we'd call the AI, but for offline testing/safety we mock it if no key
+    if os.environ.get("OPENAI_API_KEY"):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0
+            )
+            result = json.loads(response.choices[0].message.content)
+        except Exception:
+            used_fallback = True
+    else:
+        used_fallback = True
+
+    if used_fallback:
+        # Better fallback mapping check logic using column contents
+        cols = list(df.columns)
+        mapping = {}
+
+        # Clean column names by stripping whitespace for matching
+        cleaned_cols = [str(c).strip() for c in cols]
+
+        for c in cleaned_cols:
+            lower_c = c.lower()
+            if 'date' in lower_c and 'date' not in mapping:
+                mapping['date'] = c
+            elif 'plan' in lower_c or 'type' in lower_c or 'action' in lower_c:
+                mapping['transaction_type'] = c
+            elif 'instrument' in lower_c or 'symbol' in lower_c or 'security' in lower_c or 'ticker' in lower_c:
+                mapping['symbol'] = c
+            elif 'quantity' in lower_c or 'shares' in lower_c or 'amount' in lower_c:
+                mapping['shares'] = c
+            elif 'cost basis' in lower_c and 'unit' not in lower_c:
+                mapping['price'] = c
+            elif 'price' in lower_c or 'value' in lower_c:
+                if 'price' not in mapping:
+                    mapping['price'] = c
+            elif 'unit' in lower_c or 'currency' in lower_c:
+                mapping['currency'] = c
+
+        # Fill missing with safe defaults that exist or won't crash directly
+        result = {
+            "date": mapping.get("date", cleaned_cols[0] if len(cleaned_cols) > 0 else "Date"),
+            "transaction_type": mapping.get("transaction_type", cleaned_cols[1] if len(cleaned_cols) > 1 else "Type"),
+            "shares": mapping.get("shares", "Amount"),
+            "price": mapping.get("price", "Value"),
+            "symbol": mapping.get("symbol", "Ticker"),
+            "currency": mapping.get("currency", "Currency")
+        }
+
     # Log to braintrust
     try:
         sample_data = df.head(5).to_csv(index=False)
         log_ai_call(
             input_sample=sample_data,
-            prompt="Infer schema from this CSV snippet (rule-based fallback used).",
+            prompt=prompt if not used_fallback else "Infer schema from this CSV snippet (rule-based fallback used).",
             response=result,
-            metadata={"task": "schema_inference"}
+            metadata={"task": "schema_inference", "used_fallback": used_fallback}
         )
     except Exception as e:
         print(f"Braintrust logging failed: {e}")
