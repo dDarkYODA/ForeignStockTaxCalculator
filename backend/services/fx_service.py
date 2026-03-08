@@ -1,4 +1,5 @@
 from datetime import date
+import pandas as pd
 
 # Mock cache for FX rates
 # In a real app this would fetch from an API or DB

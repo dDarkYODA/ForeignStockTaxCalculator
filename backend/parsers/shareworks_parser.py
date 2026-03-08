@@ -4,7 +4,7 @@ from backend.models.transaction import Transaction
 def parse(file_path: str) -> list[Transaction]:
     df = pd.read_csv(file_path)
     transactions = []
-    
+
     for _, row in df.iterrows():
         # Handle cases where shares/price might be missing or empty strings
         try:
@@ -12,7 +12,7 @@ def parse(file_path: str) -> list[Transaction]:
             price = float(row.get('Price', 0))
         except ValueError:
             continue
-            
+
         t = Transaction(
             date=pd.to_datetime(row['Transaction Date']).date(),
             transaction_type=row['Plan Type'],
