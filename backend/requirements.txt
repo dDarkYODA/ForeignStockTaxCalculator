@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 pandas
-<<<<<<< HEAD
 python-multipart
 openai
 pydantic
@@ -10,12 +9,7 @@ opentelemetry-api
 opentelemetry-sdk
 opentelemetry-instrumentation-fastapi
 opentelemetry-exporter-otlp
-=======
 openpyxl
-python-multipart
 sqlalchemy
 psycopg2-binary
-openai
 python-dotenv
-pydantic
->>>>>>> origin/main

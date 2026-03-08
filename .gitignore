@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-venv/
-__pycache__/
-.env
-node_modules/
-dist/
-build/
-*.pyc
-.DS_Store
-=======
 # Python
 __pycache__/
 *.py[cod]
@@ -33,4 +23,3 @@ build/
 # Temporary files
 /tmp/*
 *.log
->>>>>>> origin/main

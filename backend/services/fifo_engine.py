@@ -1,47 +1,3 @@
-<<<<<<< HEAD
-from backend.models.transaction import Transaction
-
-def match_lots(transactions: list[Transaction]) -> list[tuple[Transaction, Transaction, float]]:
-    """
-    Match BUY/VEST transactions with SELL transactions using FIFO.
-    Returns a list of tuples: (buy_transaction, sell_transaction, matched_shares)
-    """
-    matches = []
-
-    # Sort by date
-    transactions = sorted(transactions, key=lambda x: x.date)
-
-    # Track inventory (buy/vest lots)
-    inventory = []
-
-    for t in transactions:
-        # Match "SELL" exactly or contain 'sell' in type to handle variants
-        is_sell = (t.transaction_type == 'SELL' or 'sell' in t.transaction_type.lower())
-
-        if not is_sell:
-            inventory.append({
-                'tx': t,
-                'remaining': t.shares
-            })
-        else:
-            shares_to_sell = t.shares
-
-            # Consume inventory
-            while shares_to_sell > 0 and inventory:
-                lot = inventory[0]
-                available = lot['remaining']
-
-                if available <= shares_to_sell:
-                    matches.append((lot['tx'], t, available))
-                    shares_to_sell -= available
-                    inventory.pop(0)
-                else:
-                    matches.append((lot['tx'], t, shares_to_sell))
-                    lot['remaining'] -= shares_to_sell
-                    shares_to_sell = 0
-
-    return matches
-=======
 from models.schema import Lot
 from sqlalchemy.orm import Session
 from datetime import date
@@ -105,4 +61,3 @@ def match_sell_fifo(db: Session, user_id: str, symbol: str, shares_to_sell: floa
 
     db.commit()
     return results
->>>>>>> origin/main
