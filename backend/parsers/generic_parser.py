@@ -41,10 +41,10 @@ def infer_schema_with_ai(header_row, sample_rows):
             client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
             response = client.chat.completions.create(
                 model="gpt-4o", # Replace with appropriate model
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that outputs JSON."},
-                {"role": "user", "content": prompt}
-            ],
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that outputs JSON."},
+                    {"role": "user", "content": prompt}
+                ],
                 response_format={ "type": "json_object" }
             )
             return json.loads(response.choices[0].message.content)
