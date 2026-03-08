@@ -46,8 +46,6 @@ function App() {
       });
       const data = await res.json();
       setTransactions(data);
-      // Reset tax results when new file is uploaded
-      setTaxResults([]);
     } catch (err) {
       console.error(err);
       alert('Upload failed');
@@ -58,14 +56,6 @@ function App() {
 
   const handleCalculate = async () => {
     if (transactions.length === 0) return;
-    
-    // Check if there's any SELL transactions. If not, matching won't work and the backend will return [].
-    const hasSell = transactions.some(t => t.transaction_type.toUpperCase() === 'SELL' || t.transaction_type.toLowerCase().includes('sell'));
-    if (!hasSell) {
-      alert("No SELL transactions found in your data. Capital gains are only realized upon selling.");
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/calculate`, {
@@ -74,11 +64,7 @@ function App() {
         body: JSON.stringify(transactions),
       });
       const data = await res.json();
-      if (data && data.length > 0) {
-        setTaxResults(data);
-      } else {
-        alert("No capital gains were computed. Make sure you have matching BUY and SELL transactions.");
-      }
+      setTaxResults(data);
     } catch (err) {
       console.error(err);
       alert('Calculation failed');
