@@ -18,18 +18,39 @@ def infer_schema(file_path: str) -> dict:
 
     csv_sample = df.to_csv(index=False)
 
-    prompt = f"""
-    Given the following CSV sample of stock transactions, map the columns to these standard names:
-    date, transaction_type, shares, price, symbol, currency
+    cols = list(df.columns)
+    mapping = {}
 
-    Return a JSON object with the standard names as keys and the CSV column names as values.
-    Only return valid JSON, nothing else.
+    # Clean column names by stripping whitespace for matching
+    cleaned_cols = [str(c).strip() for c in cols]
 
-    Sample:
-    {csv_sample}
-    """
+    for c in cleaned_cols:
+        lower_c = c.lower()
+        if 'date' in lower_c and 'date' not in mapping:
+            mapping['date'] = c
+        elif 'plan' in lower_c or 'type' in lower_c or 'action' in lower_c:
+            mapping['transaction_type'] = c
+        elif 'instrument' in lower_c or 'symbol' in lower_c or 'security' in lower_c or 'ticker' in lower_c:
+            mapping['symbol'] = c
+        elif 'quantity' in lower_c or 'shares' in lower_c or 'amount' in lower_c:
+            mapping['shares'] = c
+        elif 'cost basis' in lower_c and 'unit' not in lower_c:
+            mapping['price'] = c
+        elif 'price' in lower_c or 'value' in lower_c:
+            if 'price' not in mapping:
+                mapping['price'] = c
+        elif 'unit' in lower_c or 'currency' in lower_c:
+            mapping['currency'] = c
 
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "dummy"))
+    # Fill missing with safe defaults
+    result = {
+        "date": mapping.get("date", cleaned_cols[0] if len(cleaned_cols) > 0 else "Date"),
+        "transaction_type": mapping.get("transaction_type", cleaned_cols[1] if len(cleaned_cols) > 1 else "Type"),
+        "shares": mapping.get("shares", "Amount"),
+        "price": mapping.get("price", "Value"),
+        "symbol": mapping.get("symbol", "Ticker"),
+        "currency": mapping.get("currency", "Currency")
+    }
 
     result = {}
     used_fallback = False
