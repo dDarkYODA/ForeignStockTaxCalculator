@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from backend.models.transaction import Transaction, TaxResult
@@ -12,11 +13,28 @@ app = FastAPI(title="Foreign Stock Tax Calculator")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+=======
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from api.endpoints import router
+from models.database import engine, Base
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Foreign Stock Tax Calculator API")
+
+# Configure CORS for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For dev purposes
+>>>>>>> origin/main
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+<<<<<<< HEAD
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Foreign Stock Tax Calculator API"}
@@ -48,3 +66,10 @@ async def upload_file(broker: str, file: UploadFile = File(...)):
 @app.post("/calculate", response_model=list[TaxResult])
 def calculate_tax(transactions: list[Transaction]):
     return calculate_gains(transactions)
+=======
+app.include_router(router, prefix="/api")
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the Foreign Stock Tax Calculator API"}
+>>>>>>> origin/main
