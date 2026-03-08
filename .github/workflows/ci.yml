@@ -48,5 +48,4 @@ jobs:
       env:
         BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
       run: |
-        cd backend
-        python -m evals.schema_eval
+        PYTHONPATH=. python -m backend.evals.schema_eval
