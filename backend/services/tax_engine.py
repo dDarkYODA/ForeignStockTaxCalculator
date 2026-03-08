@@ -8,6 +8,10 @@ def calculate_gains(transactions: list[Transaction]) -> list[TaxResult]:
     matches = match_lots(transactions)
     results = []
     
+    # Check if there are matches at all. If no sales were found, matching returns empty list.
+    if not matches:
+        return []
+
     for buy_tx, sell_tx, shares in matches:
         cost_rate = get_tt_buy_rate(buy_tx.currency, buy_tx.date)
         sell_rate = get_tt_buy_rate(sell_tx.currency, sell_tx.date)
