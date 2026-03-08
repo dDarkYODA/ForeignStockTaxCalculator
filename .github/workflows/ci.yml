@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest
+
+    - name: Run Backend Tests
+      run: |
+        cd backend
+        pytest ../tests
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm install
+
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Install Braintrust
+      run: |
+        pip install braintrust autoevals
+
+    - name: Run Schema Inference Evaluation
+      env:
+        BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
+      run: |
+        if [ -n "$BRAINTRUST_API_KEY" ]; then
+          PYTHONPATH=. python -m backend.evals.schema_eval
+        else
+          echo "Warning: BRAINTRUST_API_KEY is not set. Skipping schema inference evaluation."
+        fi

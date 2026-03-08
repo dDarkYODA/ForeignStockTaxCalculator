@@ -1,10 +1,11 @@
 fastapi
 uvicorn
 pandas
-openpyxl
 python-multipart
-sqlalchemy
-psycopg2-binary
 openai
-python-dotenv
 pydantic
+braintrust
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-exporter-otlp

@@ -1,37 +1,242 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import UploadPage from './pages/UploadPage';
-import PreviewPage from './pages/PreviewPage';
-import ResultsPage from './pages/ResultsPage';
+import { useState } from 'react';
+import * as XLSX from 'xlsx';
+import './index.css';
+
+interface Transaction {
+  date: string;
+  transaction_type: string;
+  symbol: string;
+  shares: number;
+  price: number;
+  currency: string;
+  broker: string;
+  reference_id?: string;
+}
+
+interface TaxResult {
+  date: string;
+  symbol: string;
+  shares: number;
+  cost_inr: number;
+  sale_inr: number;
+  gain_inr: number;
+  holding_type: string;
+}
 
 function App() {
-  return (
-    <Router>
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-12">
-        <header className="bg-white shadow-sm sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16 items-center">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-                    ₹
-                  </div>
-                  <span className="font-bold text-xl tracking-tight text-gray-900">Foreign Tax Calc</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
+  const [file, setFile] = useState<File | null>(null);
+  const [broker, setBroker] = useState<string>('shareworks');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [taxResults, setTaxResults] = useState<TaxResult[]>([]);
+  const [loading, setLoading] = useState(false);
 
-        <main>
-          <Routes>
-            <Route path="/" element={<UploadPage />} />
-            <Route path="/preview" element={<PreviewPage />} />
-            <Route path="/results" element={<ResultsPage />} />
-          </Routes>
-        </main>
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  const handleUpload = async () => {
+    if (!file) return;
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('broker', broker);
+
+    try {
+      const res = await fetch(`${API_URL}/upload?broker=${broker}`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      setTransactions(data);
+      // Reset tax results when new file is uploaded
+      setTaxResults([]);
+    } catch (err) {
+      console.error(err);
+      alert('Upload failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCalculate = async () => {
+    if (transactions.length === 0) return;
+
+    // Check if there's any SELL transactions. If not, matching won't work and the backend will return [].
+    const hasSell = transactions.some(t => t.transaction_type.toUpperCase() === 'SELL' || t.transaction_type.toLowerCase().includes('sell'));
+    if (!hasSell) {
+      alert("No SELL transactions found in your data. Capital gains are only realized upon selling.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(transactions),
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setTaxResults(data);
+      } else {
+        alert("No capital gains were computed. Make sure you have matching BUY and SELL transactions.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Calculation failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(taxResults);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tax Results");
+    XLSX.writeFile(wb, "tax_results.xlsx");
+  };
+
+  const exportCSV = () => {
+    const headers = ['date', 'symbol', 'shares', 'cost_inr', 'sale_inr', 'gain_inr', 'holding_type'];
+    const csvContent = [
+      headers.join(','),
+      ...taxResults.map(row =>
+        [row.date, row.symbol, row.shares, row.cost_inr, row.sale_inr, row.gain_inr, row.holding_type].join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'tax_results.csv';
+    link.click();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <h1 className="text-3xl font-bold text-gray-900">Foreign Stock Tax Calculator</h1>
+
+        {/* Upload Section */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">1. Upload Transactions</h2>
+          <div className="flex items-center space-x-4">
+            <select
+              value={broker}
+              onChange={e => setBroker(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="shareworks">Morgan Stanley Shareworks</option>
+              <option value="fidelity">Fidelity</option>
+              <option value="unknown">Unknown (AI Infer Schema)</option>
+            </select>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={e => setFile(e.target.files?.[0] || null)}
+              className="border p-2 rounded"
+            />
+            <button
+              onClick={handleUpload}
+              disabled={!file || loading}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Processing...' : 'Upload & Parse'}
+            </button>
+          </div>
+        </div>
+
+        {/* Transactions Preview */}
+        {transactions.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">2. Transaction Preview</h2>
+              <button
+                onClick={handleCalculate}
+                disabled={loading}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                Calculate Capital Gains
+              </button>
+            </div>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2">Date</th>
+                  <th className="p-2">Type</th>
+                  <th className="p-2">Symbol</th>
+                  <th className="p-2">Shares</th>
+                  <th className="p-2">Price</th>
+                  <th className="p-2">Currency</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((t, i) => (
+                  <tr key={i} className="border-b">
+                    <td className="p-2">{t.date}</td>
+                    <td className="p-2">{t.transaction_type}</td>
+                    <td className="p-2">{t.symbol}</td>
+                    <td className="p-2">{t.shares}</td>
+                    <td className="p-2">{t.price}</td>
+                    <td className="p-2">{t.currency}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Results */}
+        {taxResults.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">3. Capital Gains Results</h2>
+              <button
+                onClick={exportExcel}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mr-2"
+              >
+                Export Excel
+              </button>
+              <button
+                onClick={exportCSV}
+                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+              >
+                Export CSV
+              </button>
+            </div>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2">Sell Date</th>
+                  <th className="p-2">Symbol</th>
+                  <th className="p-2">Shares</th>
+                  <th className="p-2">Cost (INR)</th>
+                  <th className="p-2">Sale (INR)</th>
+                  <th className="p-2">Gain (INR)</th>
+                  <th className="p-2">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {taxResults.map((r, i) => (
+                  <tr key={i} className="border-b">
+                    <td className="p-2">{r.date}</td>
+                    <td className="p-2">{r.symbol}</td>
+                    <td className="p-2">{r.shares}</td>
+                    <td className="p-2">₹{r.cost_inr.toFixed(2)}</td>
+                    <td className="p-2">₹{r.sale_inr.toFixed(2)}</td>
+                    <td className="p-2 font-semibold text-gray-900">₹{r.gain_inr.toFixed(2)}</td>
+                    <td className="p-2">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${r.holding_type === 'LTCG' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                        {r.holding_type}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </Router>
+    </div>
   );
 }
 

@@ -1,36 +1,32 @@
 from datetime import date
-import pandas as pd
-from typing import Dict, Tuple
 
-class FXService:
-    def __init__(self):
-        # Mock historical FX cache (date, currency) -> rate
-        self._cache: Dict[Tuple[date, str], float] = {
-            (date(2023, 1, 15), "USD"): 81.50,
-            (date(2023, 6, 20), "USD"): 82.10,
-            (date(2024, 2, 10), "USD"): 83.00,
-            (date(2024, 5, 5), "USD"): 83.50,
-        }
-        self.default_rate = 83.0  # fallback
+# Mock cache for FX rates
+# In a real app this would fetch from an API or DB
+_cache = {
+    'USD': {
+        date(2023, 1, 1): 82.5,
+        date(2023, 2, 1): 82.0,
+        date(2023, 3, 1): 82.2,
+        date(2024, 1, 1): 83.0,
+    }
+}
 
-    def get_tt_buy_rate(self, currency: str, dt: date) -> float:
-        """
-        Mock implementation of SBI TT buying rate.
-        In a real app, this would query an API or a database of historical rates.
-        """
-        if currency.upper() == "INR":
-            return 1.0
-            
-        rate = self._cache.get((dt, currency.upper()))
-        if rate is not None:
-            return rate
-            
-        # For dates not in mock cache, return a deterministic derived value based on year
-        if dt.year == 2021: return 74.5
-        if dt.year == 2022: return 78.2
-        if dt.year == 2023: return 82.5
-        if dt.year == 2024: return 83.2
+def get_tt_buy_rate(currency: str, date_val: date) -> float:
+    """
+    Returns the SBI TT buying rate for a given currency on a given date.
+    """
+    if currency == 'INR':
+        return 1.0
         
-        return self.default_rate
+    rates = _cache.get(currency, {})
+    if date_val in rates:
+        return rates[date_val]
 
-fx_service = FXService()
+    # Simple fallback mechanism - find nearest date
+    # Not ideal for production but good enough for this project setup
+    if rates:
+        closest_date = min(rates.keys(), key=lambda d: abs(d - date_val))
+        return rates[closest_date]
+
+    # Default fallback
+    return 83.0

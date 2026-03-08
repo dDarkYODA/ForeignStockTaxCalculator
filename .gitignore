@@ -1,25 +1,8 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
 venv/
+__pycache__/
 .env
-
-# Node
 node_modules/
 dist/
 build/
-.npm/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
+*.pyc
 .DS_Store
-
-# Temporary files
-/tmp/*
-*.log
