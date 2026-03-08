@@ -3,15 +3,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.models.transaction import Transaction, TaxResult
 from backend.parsers import shareworks_parser, fidelity_parser, generic_parser
 from backend.services.tax_engine import calculate_gains
-from backend.otel import setup_otel
 import os
 import shutil
 import tempfile
 
-# Initialize OpenTelemetry
-setup_otel()
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+# Initialize tracing
+resource = Resource(attributes={
+    "service.name": "foreign-stock-tax-calculator-backend"
+})
+provider = TracerProvider(resource=resource)
+processor = BatchSpanProcessor(OTLPSpanExporter())
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
 
 app = FastAPI(title="Foreign Stock Tax Calculator")
+
+FastAPIInstrumentor.instrument_app(app)
 
 app.add_middleware(
     CORSMiddleware,
