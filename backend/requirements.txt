@@ -4,3 +4,4 @@ pandas
 python-multipart
 openai
 pydantic
+braintrust

@@ -2,6 +2,7 @@ import pandas as pd
 import json
 import os
 from openai import OpenAI
+from backend.services.braintrust_client import log_ai_call
 from backend.models.transaction import Transaction
 
 def infer_schema(file_path: str) -> dict:
@@ -40,7 +41,7 @@ def infer_schema(file_path: str) -> dict:
             mapping['currency'] = c
             
     # Fill missing with safe defaults
-    return {
+    result = {
         "date": mapping.get("date", cleaned_cols[0] if len(cleaned_cols) > 0 else "Date"),
         "transaction_type": mapping.get("transaction_type", cleaned_cols[1] if len(cleaned_cols) > 1 else "Type"),
         "shares": mapping.get("shares", "Amount"),
@@ -48,6 +49,20 @@ def infer_schema(file_path: str) -> dict:
         "symbol": mapping.get("symbol", "Ticker"),
         "currency": mapping.get("currency", "Currency")
     }
+
+    # Log to braintrust
+    try:
+        sample_data = df.head(5).to_csv(index=False)
+        log_ai_call(
+            input_sample=sample_data,
+            prompt="Infer schema from this CSV snippet (rule-based fallback used).",
+            response=result,
+            metadata={"task": "schema_inference"}
+        )
+    except Exception as e:
+        print(f"Braintrust logging failed: {e}")
+
+    return result
 
 def parse(file_path: str, mapping: dict = None) -> list[Transaction]:
     if not mapping:
