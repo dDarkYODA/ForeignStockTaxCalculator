@@ -4,7 +4,4 @@ pandas
 python-multipart
 openai
 pydantic
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-instrumentation-fastapi
-opentelemetry-exporter-otlp
+braintrust

@@ -7,25 +7,7 @@ import os
 import shutil
 import tempfile
 
-from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-# Initialize tracing
-resource = Resource(attributes={
-    "service.name": "foreign-stock-tax-calculator-backend"
-})
-provider = TracerProvider(resource=resource)
-processor = BatchSpanProcessor(OTLPSpanExporter())
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
-
 app = FastAPI(title="Foreign Stock Tax Calculator")
-
-FastAPIInstrumentor.instrument_app(app)
 
 app.add_middleware(
     CORSMiddleware,

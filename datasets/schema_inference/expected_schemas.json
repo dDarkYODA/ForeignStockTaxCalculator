@@ -1,0 +1,26 @@
+{
+    "shareworks_sample.csv": {
+        "date": "Date",
+        "transaction_type": "Type",
+        "shares": "Quantity",
+        "price": "Cost Basis",
+        "symbol": "Security",
+        "currency": "Currency"
+    },
+    "fidelity_sample.csv": {
+        "date": "Date",
+        "transaction_type": "Action",
+        "shares": "Shares",
+        "price": "Price",
+        "symbol": "Symbol",
+        "currency": "Currency"
+    },
+    "generic_broker_sample.csv": {
+        "date": "Transaction Date",
+        "transaction_type": "Transaction Type",
+        "shares": "Amount",
+        "price": "Value",
+        "symbol": "Ticker",
+        "currency": "Currency"
+    }
+}
