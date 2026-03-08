@@ -5,6 +5,17 @@ from backend.parsers.shareworks_parser import parse as parse_shareworks
 from backend.models.transaction import Transaction
 
 def generate_dummy_data(filename, num_rows):
+    """
+    Create a CSV file containing synthetic Shareworks-style transaction rows.
+    
+    Generates a CSV at the given filename with num_rows rows and the following columns:
+    'Transaction Date' (all '2023-01-01'), 'Plan Type' (all 'RSU_VEST'), 'Symbol' (all 'MSFT'),
+    'Shares' (all 50.0), and 'Price' (all 250.0).
+    
+    Parameters:
+        filename (str): Path where the CSV file will be written.
+        num_rows (int): Number of synthetic rows to generate.
+    """
     data = {
         'Transaction Date': ['2023-01-01'] * num_rows,
         'Plan Type': ['RSU_VEST'] * num_rows,
@@ -16,6 +27,11 @@ def generate_dummy_data(filename, num_rows):
     df.to_csv(filename, index=False)
 
 def benchmark():
+    """
+    Run a lightweight benchmark of the Shareworks parser using a generated CSV.
+    
+    Creates a temporary CSV at 'data/large_shareworks_dummy.csv' with 10,000 rows, invokes `parse_shareworks` on that file, prints the number of parsed rows and the elapsed time, and then removes the temporary file.
+    """
     dummy_file = 'data/large_shareworks_dummy.csv'
     num_rows = 10000
     generate_dummy_data(dummy_file, num_rows)
