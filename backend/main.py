@@ -3,9 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.models.transaction import Transaction, TaxResult
 from backend.parsers import shareworks_parser, fidelity_parser, generic_parser
 from backend.services.tax_engine import calculate_gains
+from backend.otel import setup_otel
 import os
 import shutil
 import tempfile
+
+# Initialize OpenTelemetry
+setup_otel()
 
 app = FastAPI(title="Foreign Stock Tax Calculator")
 
