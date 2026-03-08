@@ -48,4 +48,4 @@ jobs:
       env:
         BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
       run: |
-        PYTHONPATH=. python -m backend.evals.schema_eval
+        if [ -z "$BRAINTRUST_API_KEY" ]; then echo "No Braintrust API key found. Skipping evaluation."; else PYTHONPATH=. python -m backend.evals.schema_eval; fi

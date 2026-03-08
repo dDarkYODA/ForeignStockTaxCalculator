@@ -5,7 +5,3 @@ python-multipart
 openai
 pydantic
 braintrust
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-instrumentation-fastapi
-opentelemetry-exporter-otlp
