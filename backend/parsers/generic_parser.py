@@ -60,18 +60,23 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
     """
     transactions = []
 
+    date_col = mapping.get('date')
+    type_col = mapping.get('transaction_type')
+    shares_col = mapping.get('shares')
+    price_col = mapping.get('price')
+    symbol_col = mapping.get('symbol')
+    currency_col = mapping.get('currency')
+
+    # Require minimum fields
+    if not all([date_col, type_col, shares_col, price_col, symbol_col]):
+        raise ValueError("Missing required fields in mapping")
+
+    for col in [date_col, type_col, shares_col, price_col, symbol_col]:
+        if col not in df.columns:
+            raise ValueError(f"Mapped column '{col}' not found in data")
+
     for index, row in df.iterrows():
         try:
-            date_col = mapping.get('date')
-            type_col = mapping.get('transaction_type')
-            shares_col = mapping.get('shares')
-            price_col = mapping.get('price')
-            symbol_col = mapping.get('symbol')
-            currency_col = mapping.get('currency')
-
-            # Require minimum fields
-            if not all([date_col, type_col, shares_col, price_col, symbol_col]):
-                continue
 
             try:
                 dt = pd.to_datetime(str(row[date_col])).date()
@@ -89,6 +94,9 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
                 continue # Skip unknown types
 
             if pd.isna(row[shares_col]) or pd.isna(row[price_col]) or pd.isna(row[symbol_col]):
+                continue
+
+            if str(row[shares_col]).strip() == "" or str(row[price_col]).strip() == "" or str(row[symbol_col]).strip() == "":
                 continue
 
             shares = float(str(row[shares_col]).replace(',', ''))

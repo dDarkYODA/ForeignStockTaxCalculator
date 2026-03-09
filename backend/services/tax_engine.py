@@ -12,7 +12,6 @@ def process_transactions(db: Session, user_id: str):
     # 1. Clear existing lots and tax calculations for this user to ensure idempotency
     db.query(Lot).filter(Lot.user_id == user_id).delete()
     db.query(TaxCalculation).filter(TaxCalculation.user_id == user_id).delete()
-    db.commit()
 
     # 2. Get all transactions ordered by date
     transactions = db.query(Transaction).filter(Transaction.user_id == user_id).order_by(Transaction.date).all()
@@ -35,7 +34,6 @@ def process_transactions(db: Session, user_id: str):
             # Add currency dynamically if needed, schema currently doesn't have it on Lot but let's assume it inherits or defaults to USD.
             lot.currency = txn.currency
             db.add(lot)
-            db.commit()
 
         elif txn.transaction_type == TransactionType.SELL:
             # Match against lots and calculate tax
@@ -64,4 +62,5 @@ def process_transactions(db: Session, user_id: str):
                 )
                 db.add(tax_calc)
 
-            db.commit()
+    # Commit the entire batch
+    db.commit()

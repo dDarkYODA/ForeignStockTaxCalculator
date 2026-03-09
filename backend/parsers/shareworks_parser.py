@@ -49,14 +49,15 @@ def parse_shareworks(df: pd.DataFrame) -> list:
             if pd.isna(row[shares_col]) or pd.isna(row[price_col]) or pd.isna(row[symbol_col]):
                 continue
 
-            shares = float(str(row[shares_col]).replace(',', ''))
-            # Sometimes price has a '$'
-            price_str = str(row[price_col]).replace('$', '').replace(',', '')
-            price = float(price_str) if price_str.strip() else 0.0
-
+            qty_str = str(row[shares_col]).replace(',', '').strip()
+            price_str = str(row[price_col]).replace('$', '').replace(',', '').strip()
             symbol = str(row[symbol_col]).strip()
-            if not symbol:
+
+            if not qty_str or not price_str or not symbol:
                 continue
+
+            shares = float(qty_str)
+            price = float(price_str)
 
             transactions.append({
                 "date": dt,

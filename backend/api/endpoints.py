@@ -43,15 +43,18 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
             sample = df.head(20).to_dict(orient="records")
             inferred_mapping = infer_schema_with_ai(header, sample)
 
+            import uuid
+            temp_filename = str(uuid.uuid4())
+
             # Save the file content temporarily for later confirmation
-            with open(f"/tmp/{filename}", "wb") as f:
+            with open(f"/tmp/{temp_filename}", "wb") as f:
                 f.write(content)
 
             return {
                 "status": "requires_mapping",
                 "message": "Please confirm the inferred column mapping.",
                 "inferred_mapping": inferred_mapping,
-                "filename": filename
+                "filename": temp_filename
             }
         else:
             raise HTTPException(status_code=400, detail="Unknown broker")
@@ -70,8 +73,11 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
 
         return {"status": "success", "message": f"Processed {len(transactions_data)} transactions"}
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error processing upload: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/confirm-mapping/{filename}")
 async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: Session = Depends(get_db)):
@@ -79,13 +85,30 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
     Confirm mapping for generic file upload and process transactions.
     """
     try:
+        import os
         filepath = f"/tmp/{filename}"
-        if filename.endswith('.csv'):
+
+        # Security: filename is now a UUID, so we can't trust its extension
+        # If we need to support excel, we should probably save the extension or try both
+        # Here we just try reading as CSV, and if it fails, try Excel.
+        df = None
+        try:
             df = pd.read_csv(filepath)
-        elif filename.endswith('.xlsx') or filename.endswith('.xls'):
-            df = pd.read_excel(filepath)
+        except Exception:
+            try:
+                df = pd.read_excel(filepath)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Unsupported file format")
+
+        if df is None:
+            raise HTTPException(status_code=400, detail="Unsupported file format")
 
         transactions_data = parse_generic_with_mapping(df, confirmation.mapping)
+
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
 
         # Clear existing transactions for idempotency
         db.query(Transaction).filter(Transaction.user_id == MOCK_USER_ID).delete()
@@ -101,8 +124,11 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
 
         return {"status": "success", "message": f"Processed {len(transactions_data)} transactions"}
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error processing upload: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/transactions")
 def get_transactions(db: Session = Depends(get_db)):
