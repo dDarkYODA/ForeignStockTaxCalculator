@@ -20,17 +20,17 @@ class FXService:
         """
         if currency.upper() == "INR":
             return 1.0
-            
+
         rate = self._cache.get((dt, currency.upper()))
         if rate is not None:
             return rate
-            
+
         # For dates not in mock cache, return a deterministic derived value based on year
         if dt.year == 2021: return 74.5
         if dt.year == 2022: return 78.2
         if dt.year == 2023: return 82.5
         if dt.year == 2024: return 83.2
-        
+
         return self.default_rate
 
 fx_service = FXService()

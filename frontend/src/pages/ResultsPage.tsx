@@ -23,11 +23,11 @@ const ResultsPage: React.FC = () => {
 
   const handleExportCSV = () => {
     if (results.length === 0) return;
-    
+
     const headers = ['Date', 'Symbol', 'Shares', 'Cost (INR)', 'Sale (INR)', 'Gain (INR)', 'Holding Type'];
     const csvContent = [
       headers.join(','),
-      ...results.map(row => 
+      ...results.map(row =>
         `${row.date},${row.symbol},${row.shares},${row.cost_inr.toFixed(2)},${row.sale_inr.toFixed(2)},${row.gain_inr.toFixed(2)},${row.holding_type}`
       )
     ].join('\n');
@@ -59,7 +59,7 @@ const ResultsPage: React.FC = () => {
             <Info className="w-4 h-4 mr-1" /> FIFO method applied. Foreign exchange based on SBI TT Buying Rates.
           </p>
         </div>
-        <button 
+        <button
           onClick={handleExportCSV}
           className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
         >
