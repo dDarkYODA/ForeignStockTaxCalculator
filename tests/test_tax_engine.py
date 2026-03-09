@@ -1,6 +1,7 @@
 from datetime import date
 from backend.models.transaction import Transaction
-from backend.services.tax_engine import calculate_gains
+from backend.services.tax_engine import process_transactions
+calculate_gains = process_transactions
 
 def test_short_term_capital_gain():
     transactions = [

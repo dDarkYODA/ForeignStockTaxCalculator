@@ -1,6 +1,7 @@
 from datetime import date
 from backend.models.transaction import Transaction
-from backend.services.fifo_engine import match_lots
+from backend.services.fifo_engine import match_sell_fifo
+match_lots = match_sell_fifo
 
 def test_fifo_matching():
     transactions = [

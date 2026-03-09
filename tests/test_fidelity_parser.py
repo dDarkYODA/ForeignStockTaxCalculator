@@ -1,4 +1,5 @@
-from backend.parsers.fidelity_parser import parse
+from backend.parsers.fidelity_parser import parse_fidelity
+parse = parse_fidelity
 from datetime import date
 import tempfile
 import csv

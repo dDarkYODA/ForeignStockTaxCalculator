@@ -1,4 +1,5 @@
-from backend.parsers.shareworks_parser import parse
+from backend.parsers.shareworks_parser import parse_shareworks
+parse = parse_shareworks
 from datetime import date
 import tempfile
 import csv

@@ -1,4 +1,6 @@
-from backend.parsers.generic_parser import infer_schema, parse
+from backend.parsers.generic_parser import infer_schema_with_ai, parse_generic_with_mapping
+parse = parse_generic_with_mapping
+infer_schema = infer_schema_with_ai
 import tempfile
 import csv
 import os
