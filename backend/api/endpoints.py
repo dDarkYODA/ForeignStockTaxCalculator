@@ -86,7 +86,13 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
     """
     try:
         import os
-        filepath = f"/tmp/{filename}"
+
+        # Sanitize filename to prevent path traversal
+        filename = os.path.basename(filename)
+        if not filename or filename == "." or filename == "..":
+            raise HTTPException(status_code=400, detail="Invalid filename")
+
+        filepath = os.path.join("/tmp", filename)
 
         # Security: filename is now a UUID, so we can't trust its extension
         # If we need to support excel, we should probably save the extension or try both
