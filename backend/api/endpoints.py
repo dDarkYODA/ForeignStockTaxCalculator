@@ -86,13 +86,16 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
     """
     try:
         import os
+        import uuid
 
-        # Sanitize filename to prevent path traversal
-        filename = os.path.basename(filename)
-        if not filename or filename == "." or filename == "..":
-            raise HTTPException(status_code=400, detail="Invalid filename")
+        # Sanitize filename to strictly be a UUID to prevent path traversal
+        try:
+            valid_uuid = uuid.UUID(filename)
+            safe_filename = str(valid_uuid)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid filename format")
 
-        filepath = os.path.join("/tmp", filename)
+        filepath = os.path.join("/tmp", safe_filename)
 
         # Security: filename is now a UUID, so we can't trust its extension
         # If we need to support excel, we should probably save the extension or try both
