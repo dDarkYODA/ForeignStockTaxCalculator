@@ -1,4 +1,4 @@
-from models.schema import Lot
+from backend.models.schema import Lot
 from sqlalchemy.orm import Session
 from datetime import date
 from .fx_service import fx_service

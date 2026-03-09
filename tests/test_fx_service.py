@@ -1,4 +1,6 @@
-from backend.services.fx_service import get_tt_buy_rate
+from backend.services.fx_service import fx_service
+
+get_tt_buy_rate = fx_service.get_tt_buy_rate
 from datetime import date
 
 

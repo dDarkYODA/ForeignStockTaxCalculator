@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
 from sqlalchemy.orm import Session
-from models.database import get_db
-from models.schema import Transaction, Lot, TaxCalculation
-from parsers.shareworks_parser import parse_shareworks
-from parsers.fidelity_parser import parse_fidelity
-from parsers.generic_parser import infer_schema_with_ai, parse_generic_with_mapping
-from services.tax_engine import process_transactions
+from backend.models.database import get_db
+from backend.models.schema import Transaction, Lot, TaxCalculation
+from backend.parsers.shareworks_parser import parse_shareworks
+from backend.parsers.fidelity_parser import parse_fidelity
+from backend.parsers.generic_parser import infer_schema_with_ai, parse_generic_with_mapping
+from backend.services.tax_engine import process_transactions
 from pydantic import BaseModel
 import pandas as pd
 import io

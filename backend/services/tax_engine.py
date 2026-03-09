@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models.schema import Transaction, Lot, TaxCalculation, TransactionType
+from backend.models.schema import Transaction, Lot, TaxCalculation, TransactionType
 from .fifo_engine import match_sell_fifo
 from .fx_service import fx_service
 

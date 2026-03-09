@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-from models.schema import TransactionType
+from backend.models.schema import TransactionType
 
 def parse_shareworks(df: pd.DataFrame) -> list:
     transactions = []
@@ -46,12 +46,17 @@ def parse_shareworks(df: pd.DataFrame) -> list:
             else:
                 continue # Skip unknown types
 
+            if pd.isna(row[shares_col]) or pd.isna(row[price_col]) or pd.isna(row[symbol_col]):
+                continue
+
             shares = float(str(row[shares_col]).replace(',', ''))
             # Sometimes price has a '$'
             price_str = str(row[price_col]).replace('$', '').replace(',', '')
             price = float(price_str) if price_str.strip() else 0.0
 
-            symbol = str(row[symbol_col])
+            symbol = str(row[symbol_col]).strip()
+            if not symbol:
+                continue
 
             transactions.append({
                 "date": dt,

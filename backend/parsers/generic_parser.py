@@ -2,7 +2,7 @@ import pandas as pd
 import json
 import os
 from openai import OpenAI
-from models.schema import TransactionType
+from backend.models.schema import TransactionType
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "dummy_key"))
@@ -88,12 +88,17 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
             else:
                 continue # Skip unknown types
 
+            if pd.isna(row[shares_col]) or pd.isna(row[price_col]) or pd.isna(row[symbol_col]):
+                continue
+
             shares = float(str(row[shares_col]).replace(',', ''))
 
             price_str = str(row[price_col]).replace('$', '').replace(',', '')
             price = float(price_str) if price_str.strip() else 0.0
 
             symbol = str(row[symbol_col]).strip()
+            if not symbol:
+                continue
 
             currency = str(row[currency_col]).strip() if currency_col and not pd.isna(row[currency_col]) else "USD"
 
