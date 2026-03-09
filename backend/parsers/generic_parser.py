@@ -4,16 +4,18 @@ import os
 from openai import OpenAI
 from backend.models.schema import TransactionType
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "dummy_key"))
-
 def infer_schema_with_ai(header_row, sample_rows):
     """
     Sends the header row and first 20 rows to an AI model
     to infer column mappings.
     """
+    csv_sample = f"Header: {header_row}\nSample Data:\n{sample_rows}"
     prompt = f"""
     You are an expert at parsing financial CSV files.
+    Here is the CSV sample:
+    
+    {csv_sample}
+    
     Here is the header row and a sample of the first few rows of a stock transaction file.
 
     Header: {header_row}
@@ -41,15 +43,19 @@ def infer_schema_with_ai(header_row, sample_rows):
     Do not include any markdown formatting or extra text.
     """
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o", # Replace with appropriate model
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that outputs JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={ "type": "json_object" }
-        )
-        return json.loads(response.choices[0].message.content)
+        if os.environ.get("OPENAI_API_KEY"):
+            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            response = client.chat.completions.create(
+                model="gpt-4o", # Replace with appropriate model
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that outputs JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={ "type": "json_object" }
+            )
+            return json.loads(response.choices[0].message.content)
+        else:
+            return {}
     except Exception as e:
         print(f"Error calling AI: {e}")
         return {}
@@ -59,6 +65,11 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
     Parses a dataframe using a provided column mapping.
     """
     transactions = []
+    
+    cols = list(df.columns)
+    for key, val in mapping.items():
+        if val and val not in cols:
+            print(f"Warning: Fallback default '{val}' for standard name '{key}' is missing in the CSV columns.")
 
     date_col = mapping.get('date')
     type_col = mapping.get('transaction_type')
