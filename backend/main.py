@@ -1,7 +1,39 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.endpoints import router
 from backend.models.database import engine, Base
+
+# Configure OpenTelemetry
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentation
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentation
+from opentelemetry.instrumentation.requests import RequestsInstrumentation
+from opentelemetry.sdk.resources import Resource
+
+# Set up resource for service identification
+resource = Resource.create({
+    "service.name": os.getenv("OTEL_SERVICE_NAME", "foreign-stock-tax-calculator-api"),
+    "service.version": "1.0.0",
+})
+
+# Create OTLP exporter
+otlp_exporter = OTLPSpanExporter(
+    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://ingest.kubiks.app"),
+)
+
+# Create tracer provider
+trace_provider = TracerProvider(resource=resource)
+trace_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+trace.set_tracer_provider(trace_provider)
+
+# Instrument libraries
+FastAPIInstrumentation().instrument()
+SQLAlchemyInstrumentation().instrument()
+RequestsInstrumentation().instrument()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
