@@ -2,7 +2,7 @@ import pandas as pd
 import json
 import os
 from openai import OpenAI
-from models.schema import TransactionType
+from backend.models.schema import TransactionType
 
 def infer_schema_with_ai(header_row, sample_rows):
     """
@@ -16,6 +16,12 @@ def infer_schema_with_ai(header_row, sample_rows):
     
     {csv_sample}
     
+    Here is the header row and a sample of the first few rows of a stock transaction file.
+
+    Header: {header_row}
+    Sample Data:
+    {sample_rows}
+
     Identify which columns correspond to the following standard fields:
     - date (transaction date)
     - transaction_type (action, plan type, etc.)
@@ -23,7 +29,7 @@ def infer_schema_with_ai(header_row, sample_rows):
     - price (grant price, execution price, etc.)
     - symbol (ticker, security, etc.)
     - currency (USD, INR, etc. - might not exist, use null if not found)
-    
+
     Return ONLY a valid JSON object mapping the standard field names to the EXACT column names found in the header.
     Example output format:
     {{
@@ -65,24 +71,29 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
         if val and val not in cols:
             print(f"Warning: Fallback default '{val}' for standard name '{key}' is missing in the CSV columns.")
 
+    date_col = mapping.get('date')
+    type_col = mapping.get('transaction_type')
+    shares_col = mapping.get('shares')
+    price_col = mapping.get('price')
+    symbol_col = mapping.get('symbol')
+    currency_col = mapping.get('currency')
+
+    # Require minimum fields
+    if not all([date_col, type_col, shares_col, price_col, symbol_col]):
+        raise ValueError("Missing required fields in mapping")
+
+    for col in [date_col, type_col, shares_col, price_col, symbol_col]:
+        if col not in df.columns:
+            raise ValueError(f"Mapped column '{col}' not found in data")
+
     for index, row in df.iterrows():
         try:
-            date_col = mapping.get('date')
-            type_col = mapping.get('transaction_type')
-            shares_col = mapping.get('shares')
-            price_col = mapping.get('price')
-            symbol_col = mapping.get('symbol')
-            currency_col = mapping.get('currency')
-            
-            # Require minimum fields
-            if not all([date_col, type_col, shares_col, price_col, symbol_col]):
-                continue
-                
+
             try:
                 dt = pd.to_datetime(str(row[date_col])).date()
             except:
                 continue
-                
+
             type_str = str(row[type_col]).upper()
             if 'VEST' in type_str:
                 tx_type = TransactionType.RSU_VEST
@@ -92,16 +103,24 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
                 tx_type = TransactionType.SELL
             else:
                 continue # Skip unknown types
-                
+
+            if pd.isna(row[shares_col]) or pd.isna(row[price_col]) or pd.isna(row[symbol_col]):
+                continue
+
+            if str(row[shares_col]).strip() == "" or str(row[price_col]).strip() == "" or str(row[symbol_col]).strip() == "":
+                continue
+
             shares = float(str(row[shares_col]).replace(',', ''))
-            
+
             price_str = str(row[price_col]).replace('$', '').replace(',', '')
             price = float(price_str) if price_str.strip() else 0.0
-            
+
             symbol = str(row[symbol_col]).strip()
-            
+            if not symbol:
+                continue
+
             currency = str(row[currency_col]).strip() if currency_col and not pd.isna(row[currency_col]) else "USD"
-            
+
             transactions.append({
                 "date": dt,
                 "transaction_type": tx_type,
@@ -114,5 +133,5 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
         except Exception as e:
             print(f"Error parsing generic row {index}: {e}")
             continue
-            
+
     return transactions

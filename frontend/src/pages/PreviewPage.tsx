@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { confirmMapping } from '../services/api';
 import { AlertCircle, ArrowRight } from 'lucide-react';
@@ -6,9 +6,9 @@ import { AlertCircle, ArrowRight } from 'lucide-react';
 const PreviewPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const { inferredMapping = {}, filename = '' } = location.state || {};
-  
+
   const [mapping, setMapping] = useState<Record<string, string>>(inferredMapping);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

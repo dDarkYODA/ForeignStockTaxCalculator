@@ -25,7 +25,7 @@ class Transaction(Base):
 
 class Lot(Base):
     __tablename__ = "lots"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, default="mock_user")
     date = Column(Date, index=True)
@@ -34,10 +34,10 @@ class Lot(Base):
     price = Column(Float)
     cost_inr = Column(Float)
     available_shares = Column(Float)
-    
+
 class TaxCalculation(Base):
     __tablename__ = "tax_calculations"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, default="mock_user")
     sell_transaction_id = Column(Integer, ForeignKey("transactions.id"))

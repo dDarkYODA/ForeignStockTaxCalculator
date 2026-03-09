@@ -160,7 +160,7 @@ index 0000000..3c16828
 +    """
 +    content = await file.read()
 +    filename = file.filename
-+    
++
 +    try:
 +        if filename.endswith('.csv'):
 +            df = pd.read_csv(io.BytesIO(content))
@@ -168,7 +168,7 @@ index 0000000..3c16828
 +            df = pd.read_excel(io.BytesIO(content))
 +        else:
 +            raise HTTPException(status_code=400, detail="Unsupported file format")
-+            
++
 +        if broker == "shareworks":
 +            transactions_data = parse_shareworks(df)
 +        elif broker == "fidelity":
@@ -177,11 +177,11 @@ index 0000000..3c16828
 +            header = list(df.columns)
 +            sample = df.head(20).to_dict(orient="records")
 +            inferred_mapping = infer_schema_with_ai(header, sample)
-+            
++
 +            # Save the file content temporarily for later confirmation
 +            with open(f"/tmp/{filename}", "wb") as f:
 +                f.write(content)
-+                
++
 +            return {
 +                "status": "requires_mapping",
 +                "message": "Please confirm the inferred column mapping.",
@@ -190,21 +190,21 @@ index 0000000..3c16828
 +            }
 +        else:
 +            raise HTTPException(status_code=400, detail="Unknown broker")
-+            
++
 +        # Clear existing transactions for idempotency
 +        db.query(Transaction).filter(Transaction.user_id == MOCK_USER_ID).delete()
-+        
++
 +        for tx in transactions_data:
 +            db_tx = Transaction(**tx, user_id=MOCK_USER_ID)
 +            db.add(db_tx)
-+            
++
 +        db.commit()
-+        
++
 +        # Process transactions into lots and calculate taxes
 +        process_transactions(db, MOCK_USER_ID)
-+        
++
 +        return {"status": "success", "message": f"Processed {len(transactions_data)} transactions"}
-+        
++
 +    except Exception as e:
 +        raise HTTPException(status_code=500, detail=str(e))
 +
@@ -219,30 +219,30 @@ index 0000000..3c16828
 +            df = pd.read_csv(filepath)
 +        elif filename.endswith('.xlsx') or filename.endswith('.xls'):
 +            df = pd.read_excel(filepath)
-+            
++
 +        transactions_data = parse_generic_with_mapping(df, confirmation.mapping)
-+        
++
 +        # Clear existing transactions for idempotency
 +        db.query(Transaction).filter(Transaction.user_id == MOCK_USER_ID).delete()
-+        
++
 +        for tx in transactions_data:
 +            db_tx = Transaction(**tx, user_id=MOCK_USER_ID)
 +            db.add(db_tx)
-+            
++
 +        db.commit()
-+        
++
 +        # Process transactions into lots and calculate taxes
 +        process_transactions(db, MOCK_USER_ID)
-+        
++
 +        return {"status": "success", "message": f"Processed {len(transactions_data)} transactions"}
-+        
++
 +    except Exception as e:
 +        raise HTTPException(status_code=500, detail=str(e))
 +
 +@router.get("/transactions")
 +def get_transactions(db: Session = Depends(get_db)):
 +    return db.query(Transaction).filter(Transaction.user_id == MOCK_USER_ID).all()
-+    
++
 +@router.get("/results")
 +def get_results(db: Session = Depends(get_db)):
 +    """
@@ -351,7 +351,7 @@ index 0000000..5ec57b7
 +
 +class Lot(Base):
 +    __tablename__ = "lots"
-+    
++
 +    id = Column(Integer, primary_key=True, index=True)
 +    user_id = Column(String, index=True, default="mock_user")
 +    date = Column(Date, index=True)
@@ -360,10 +360,10 @@ index 0000000..5ec57b7
 +    price = Column(Float)
 +    cost_inr = Column(Float)
 +    available_shares = Column(Float)
-+    
++
 +class TaxCalculation(Base):
 +    __tablename__ = "tax_calculations"
-+    
++
 +    id = Column(Integer, primary_key=True, index=True)
 +    user_id = Column(String, index=True, default="mock_user")
 +    sell_transaction_id = Column(Integer, ForeignKey("transactions.id"))
@@ -389,27 +389,27 @@ index 0000000..a04d6d6
 +
 +def parse_fidelity(df: pd.DataFrame) -> list:
 +    transactions = []
-+    
++
 +    # Typical mappings for Fidelity
 +    # Date -> date
 +    # Action -> transaction_type
 +    # Quantity -> shares
 +    # Price -> price
 +    # Security -> symbol
-+    
++
 +    # Try to clean column names to make it robust
 +    df.columns = [str(c).strip() for c in df.columns]
-+    
++
 +    # Look for expected columns
 +    date_col = next((c for c in df.columns if 'date' in c.lower()), None)
 +    action_col = next((c for c in df.columns if 'action' in c.lower()), None)
 +    qty_col = next((c for c in df.columns if 'quantity' in c.lower() or 'shares' in c.lower()), None)
 +    price_col = next((c for c in df.columns if 'price' in c.lower()), None)
 +    security_col = next((c for c in df.columns if 'security' in c.lower() or 'symbol' in c.lower()), None)
-+    
++
 +    if not all([date_col, action_col, qty_col, price_col, security_col]):
 +        raise ValueError("Missing required columns for Fidelity parser")
-+        
++
 +    for index, row in df.iterrows():
 +        try:
 +            # Handle date parsing flexibly
@@ -418,7 +418,7 @@ index 0000000..a04d6d6
 +                dt = pd.to_datetime(date_str).date()
 +            except:
 +                continue
-+                
++
 +            action_str = str(row[action_col]).upper()
 +            if 'VEST' in action_str:
 +                tx_type = TransactionType.RSU_VEST
@@ -428,17 +428,17 @@ index 0000000..a04d6d6
 +                tx_type = TransactionType.SELL
 +            else:
 +                continue # Skip unknown types
-+                
++
 +            qty_str = str(row[qty_col]).replace(',', '')
 +            shares = float(qty_str) if qty_str.strip() else 0.0
-+            
++
 +            # Sometimes price has a '$'
 +            price_str = str(row[price_col]).replace('$', '').replace(',', '')
 +            price = float(price_str) if price_str.strip() else 0.0
-+            
++
 +            symbol = str(row[security_col]).strip()
 +            if not symbol: continue
-+            
++
 +            transactions.append({
 +                "date": dt,
 +                "transaction_type": tx_type,
@@ -451,7 +451,7 @@ index 0000000..a04d6d6
 +        except Exception as e:
 +            print(f"Error parsing row {index}: {e}")
 +            continue
-+            
++
 +    return transactions
 diff --git a/backend/parsers/generic_parser.py b/backend/parsers/generic_parser.py
 new file mode 100644
@@ -476,11 +476,11 @@ index 0000000..cfc262d
 +    prompt = f"""
 +    You are an expert at parsing financial CSV files.
 +    Here is the header row and a sample of the first few rows of a stock transaction file.
-+    
++
 +    Header: {header_row}
 +    Sample Data:
 +    {sample_rows}
-+    
++
 +    Identify which columns correspond to the following standard fields:
 +    - date (transaction date)
 +    - transaction_type (action, plan type, etc.)
@@ -488,7 +488,7 @@ index 0000000..cfc262d
 +    - price (grant price, execution price, etc.)
 +    - symbol (ticker, security, etc.)
 +    - currency (USD, INR, etc. - might not exist, use null if not found)
-+    
++
 +    Return ONLY a valid JSON object mapping the standard field names to the EXACT column names found in the header.
 +    Example output format:
 +    {{
@@ -520,7 +520,7 @@ index 0000000..cfc262d
 +    Parses a dataframe using a provided column mapping.
 +    """
 +    transactions = []
-+    
++
 +    for index, row in df.iterrows():
 +        try:
 +            date_col = mapping.get('date')
@@ -529,16 +529,16 @@ index 0000000..cfc262d
 +            price_col = mapping.get('price')
 +            symbol_col = mapping.get('symbol')
 +            currency_col = mapping.get('currency')
-+            
++
 +            # Require minimum fields
 +            if not all([date_col, type_col, shares_col, price_col, symbol_col]):
 +                continue
-+                
++
 +            try:
 +                dt = pd.to_datetime(str(row[date_col])).date()
 +            except:
 +                continue
-+                
++
 +            type_str = str(row[type_col]).upper()
 +            if 'VEST' in type_str:
 +                tx_type = TransactionType.RSU_VEST
@@ -548,16 +548,16 @@ index 0000000..cfc262d
 +                tx_type = TransactionType.SELL
 +            else:
 +                continue # Skip unknown types
-+                
++
 +            shares = float(str(row[shares_col]).replace(',', ''))
-+            
++
 +            price_str = str(row[price_col]).replace('$', '').replace(',', '')
 +            price = float(price_str) if price_str.strip() else 0.0
-+            
++
 +            symbol = str(row[symbol_col]).strip()
-+            
++
 +            currency = str(row[currency_col]).strip() if currency_col and not pd.isna(row[currency_col]) else "USD"
-+            
++
 +            transactions.append({
 +                "date": dt,
 +                "transaction_type": tx_type,
@@ -570,7 +570,7 @@ index 0000000..cfc262d
 +        except Exception as e:
 +            print(f"Error parsing generic row {index}: {e}")
 +            continue
-+            
++
 +    return transactions
 diff --git a/backend/parsers/shareworks_parser.py b/backend/parsers/shareworks_parser.py
 new file mode 100644
@@ -584,27 +584,27 @@ index 0000000..27d96ec
 +
 +def parse_shareworks(df: pd.DataFrame) -> list:
 +    transactions = []
-+    
++
 +    # Typical mappings for Morgan Stanley Shareworks
 +    # Transaction Date -> date
 +    # Plan Type -> transaction_type
 +    # Shares -> shares
 +    # Price -> price
 +    # Symbol -> symbol
-+    
++
 +    # Try to clean column names to make it robust
 +    df.columns = [str(c).strip() for c in df.columns]
-+    
++
 +    # Look for expected columns
 +    date_col = next((c for c in df.columns if 'date' in c.lower()), None)
 +    type_col = next((c for c in df.columns if 'plan type' in c.lower() or 'type' in c.lower()), None)
 +    shares_col = next((c for c in df.columns if 'shares' in c.lower()), None)
 +    price_col = next((c for c in df.columns if 'price' in c.lower()), None)
 +    symbol_col = next((c for c in df.columns if 'symbol' in c.lower()), None)
-+    
++
 +    if not all([date_col, type_col, shares_col, price_col, symbol_col]):
 +        raise ValueError("Missing required columns for Shareworks parser")
-+        
++
 +    for index, row in df.iterrows():
 +        try:
 +            # Handle date parsing flexibly
@@ -613,7 +613,7 @@ index 0000000..27d96ec
 +                dt = pd.to_datetime(date_str).date()
 +            except:
 +                continue
-+                
++
 +            type_str = str(row[type_col]).upper()
 +            if 'VEST' in type_str:
 +                tx_type = TransactionType.RSU_VEST
@@ -625,14 +625,14 @@ index 0000000..27d96ec
 +                tx_type = TransactionType.BUY
 +            else:
 +                continue # Skip unknown types
-+                
++
 +            shares = float(str(row[shares_col]).replace(',', ''))
 +            # Sometimes price has a '$'
 +            price_str = str(row[price_col]).replace('$', '').replace(',', '')
 +            price = float(price_str) if price_str.strip() else 0.0
-+            
++
 +            symbol = str(row[symbol_col])
-+            
++
 +            transactions.append({
 +                "date": dt,
 +                "transaction_type": tx_type,
@@ -646,7 +646,7 @@ index 0000000..27d96ec
 +            # Skip rows that can't be parsed
 +            print(f"Error parsing row {index}: {e}")
 +            continue
-+            
++
 +    return transactions
 diff --git a/backend/requirements.txt b/backend/requirements.txt
 new file mode 100644
@@ -684,40 +684,40 @@ index 0000000..625dfd2
 +    Calculates capital gains and returns a list of resulting calculations.
 +    """
 +    results = []
-+    
++
 +    # Get available lots for this symbol, ordered by date (FIFO)
 +    available_lots = db.query(Lot).filter(
 +        Lot.user_id == user_id,
 +        Lot.symbol == symbol,
 +        Lot.available_shares > 0
 +    ).order_by(Lot.date).all()
-+    
++
 +    shares_remaining = shares_to_sell
-+    
++
 +    for lot in available_lots:
 +        if shares_remaining <= 0:
 +            break
-+            
++
 +        shares_matched = min(shares_remaining, lot.available_shares)
-+        
++
 +        # Calculate holding period
 +        months_held = (sell_date.year - lot.date.year) * 12 + sell_date.month - lot.date.month
 +        if sell_date.day < lot.date.day:
 +            months_held -= 1
-+            
++
 +        holding_type = "LTCG" if months_held > 24 else "STCG"
-+        
++
 +        # Calculate costs and gains
 +        # Cost INR is calculated based on the FX rate at the time of purchase
 +        cost_fx_rate = fx_service.get_tt_buy_rate(lot.currency if hasattr(lot, 'currency') else 'USD', lot.date)
 +        cost_inr = shares_matched * lot.price * cost_fx_rate
-+        
++
 +        # Sale INR is calculated based on the FX rate at the time of sale
 +        sale_fx_rate = fx_service.get_tt_buy_rate(sell_currency, sell_date)
 +        sale_inr = shares_matched * sell_price * sale_fx_rate
-+        
++
 +        gain_inr = sale_inr - cost_inr
-+        
++
 +        results.append({
 +            "lot_id": lot.id,
 +            "shares_matched": shares_matched,
@@ -726,14 +726,14 @@ index 0000000..625dfd2
 +            "gain_inr": gain_inr,
 +            "holding_type": holding_type
 +        })
-+        
++
 +        # Update remaining shares
 +        shares_remaining -= shares_matched
-+        
++
 +        # Update lot available shares
 +        lot.available_shares -= shares_matched
 +        db.add(lot)
-+        
++
 +    db.commit()
 +    return results
 diff --git a/backend/services/fx_service.py b/backend/services/fx_service.py
@@ -764,17 +764,17 @@ index 0000000..4f080c4
 +        """
 +        if currency.upper() == "INR":
 +            return 1.0
-+            
++
 +        rate = self._cache.get((dt, currency.upper()))
 +        if rate is not None:
 +            return rate
-+            
++
 +        # For dates not in mock cache, return a deterministic derived value based on year
 +        if dt.year == 2021: return 74.5
 +        if dt.year == 2022: return 78.2
 +        if dt.year == 2023: return 82.5
 +        if dt.year == 2024: return 83.2
-+        
++
 +        return self.default_rate
 +
 +fx_service = FXService()
@@ -794,21 +794,21 @@ index 0000000..4df611e
 +    Processes all transactions for a user, creates lots for buys/vests,
 +    and calculates capital gains for sells.
 +    """
-+    
++
 +    # 1. Clear existing lots and tax calculations for this user to ensure idempotency
 +    db.query(Lot).filter(Lot.user_id == user_id).delete()
 +    db.query(TaxCalculation).filter(TaxCalculation.user_id == user_id).delete()
 +    db.commit()
-+    
++
 +    # 2. Get all transactions ordered by date
 +    transactions = db.query(Transaction).filter(Transaction.user_id == user_id).order_by(Transaction.date).all()
-+    
++
 +    for txn in transactions:
 +        if txn.transaction_type in [TransactionType.BUY, TransactionType.RSU_VEST, TransactionType.ESPP_PURCHASE]:
 +            # Create a new lot
 +            fx_rate = fx_service.get_tt_buy_rate(txn.currency, txn.date)
 +            cost_inr = txn.shares * txn.price * fx_rate
-+            
++
 +            lot = Lot(
 +                user_id=user_id,
 +                date=txn.date,
@@ -819,10 +819,10 @@ index 0000000..4df611e
 +                available_shares=txn.shares
 +            )
 +            # Add currency dynamically if needed, schema currently doesn't have it on Lot but let's assume it inherits or defaults to USD.
-+            lot.currency = txn.currency 
++            lot.currency = txn.currency
 +            db.add(lot)
 +            db.commit()
-+            
++
 +        elif txn.transaction_type == TransactionType.SELL:
 +            # Match against lots and calculate tax
 +            match_results = match_sell_fifo(
@@ -834,7 +834,7 @@ index 0000000..4df611e
 +                sell_price=txn.price,
 +                sell_currency=txn.currency
 +            )
-+            
++
 +            # Save tax calculations
 +            for result in match_results:
 +                tax_calc = TaxCalculation(
@@ -849,7 +849,7 @@ index 0000000..4df611e
 +                    holding_type=result["holding_type"]
 +                )
 +                db.add(tax_calc)
-+            
++
 +            db.commit()
 diff --git a/examples/fidelity_example.csv b/examples/fidelity_example.csv
 new file mode 100644
@@ -5387,9 +5387,9 @@ index 0000000..e85f92b
 +const PreviewPage: React.FC = () => {
 +  const location = useLocation();
 +  const navigate = useNavigate();
-+  
++
 +  const { inferredMapping = {}, filename = '' } = location.state || {};
-+  
++
 +  const [mapping, setMapping] = useState<Record<string, string>>(inferredMapping);
 +  const [isSubmitting, setIsSubmitting] = useState(false);
 +  const [error, setError] = useState<string | null>(null);
@@ -5511,11 +5511,11 @@ index 0000000..24e28c6
 +
 +  const handleExportCSV = () => {
 +    if (results.length === 0) return;
-+    
++
 +    const headers = ['Date', 'Symbol', 'Shares', 'Cost (INR)', 'Sale (INR)', 'Gain (INR)', 'Holding Type'];
 +    const csvContent = [
 +      headers.join(','),
-+      ...results.map(row => 
++      ...results.map(row =>
 +        `${row.date},${row.symbol},${row.shares},${row.cost_inr.toFixed(2)},${row.sale_inr.toFixed(2)},${row.gain_inr.toFixed(2)},${row.holding_type}`
 +      )
 +    ].join('\n');
@@ -5547,7 +5547,7 @@ index 0000000..24e28c6
 +            <Info className="w-4 h-4 mr-1" /> FIFO method applied. Foreign exchange based on SBI TT Buying Rates.
 +          </p>
 +        </div>
-+        <button 
++        <button
 +          onClick={handleExportCSV}
 +          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
 +        >
@@ -5668,13 +5668,13 @@ index 0000000..f1cc1da
 +
 +    try {
 +      const response = await uploadStatement(file, broker);
-+      
++
 +      if (response.status === 'requires_mapping') {
-+        navigate('/preview', { 
-+          state: { 
-+            inferredMapping: response.inferred_mapping, 
-+            filename: response.filename 
-+          } 
++        navigate('/preview', {
++          state: {
++            inferredMapping: response.inferred_mapping,
++            filename: response.filename
++          }
 +        });
 +      } else {
 +        navigate('/results');
@@ -5689,11 +5689,11 @@ index 0000000..f1cc1da
 +  return (
 +    <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-md mt-10">
 +      <h1 className="text-2xl font-bold text-gray-800 mb-6">Upload Foreign Stock Statement</h1>
-+      
++
 +      <div className="mb-6">
 +        <label className="block text-sm font-medium text-gray-700 mb-2">Select Broker Format</label>
-+        <select 
-+          value={broker} 
++        <select
++          value={broker}
 +          onChange={(e) => setBroker(e.target.value)}
 +          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 outline-none"
 +        >
@@ -5704,10 +5704,10 @@ index 0000000..f1cc1da
 +      </div>
 +
 +      <div className="mb-6 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors">
-+        <input 
-+          type="file" 
-+          id="file-upload" 
-+          className="hidden" 
++        <input
++          type="file"
++          id="file-upload"
++          className="hidden"
 +          accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
 +          onChange={handleFileChange}
 +        />
@@ -5730,8 +5730,8 @@ index 0000000..f1cc1da
 +        onClick={handleUpload}
 +        disabled={!file || isUploading}
 +        className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors flex justify-center items-center ${
-+          !file || isUploading 
-+            ? 'bg-blue-300 cursor-not-allowed' 
++          !file || isUploading
++            ? 'bg-blue-300 cursor-not-allowed'
 +            : 'bg-blue-600 hover:bg-blue-700'
 +        }`}
 +      >
@@ -5762,7 +5762,7 @@ index 0000000..d9685f2
 +export const uploadStatement = async (file: File, broker: string) => {
 +  const formData = new FormData();
 +  formData.append('file', file);
-+  
++
 +  const response = await axios.post(`${API_URL}/upload?broker=${broker}`, formData, {
 +    headers: {
 +      'Content-Type': 'multipart/form-data',

@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 export const uploadStatement = async (file: File, broker: string) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const response = await axios.post(`${API_URL}/upload?broker=${broker}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
