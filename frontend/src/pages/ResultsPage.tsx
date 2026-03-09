@@ -131,11 +131,20 @@ const ResultsPage: React.FC = () => {
                 </td>
               </tr>
             ))}
+
             {results.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-500">No sale transactions found to calculate gains.</td>
+                <td colSpan={7} className="p-8 text-center text-gray-500">
+                  <div className="flex flex-col items-center justify-center">
+                    <Info className="w-8 h-8 text-blue-400 mb-2" />
+                    <p className="text-lg font-medium text-gray-800">No sale transactions found</p>
+                    <p className="text-sm mt-1">Capital gains can only be calculated when there are matching SELL transactions.</p>
+                    <p className="text-sm">The uploaded file appears to only contain purchases or vests.</p>
+                  </div>
+                </td>
               </tr>
             )}
+
           </tbody>
         </table>
       </div>
