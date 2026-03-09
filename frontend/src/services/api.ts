@@ -28,3 +28,20 @@ export const getResults = async () => {
   const response = await axios.get(`${API_URL}/results`);
   return response.data;
 };
+
+export const getPortfolio = async (manualPrices?: Record<string, number>) => {
+  const params = manualPrices ? `?manual_prices=${encodeURIComponent(JSON.stringify(manualPrices))}` : '';
+  const response = await axios.get(`${API_URL}/portfolio${params}`);
+  return response.data;
+};
+
+export const simulateTrade = async (symbol: string, shares: number, price: number, currency: string, date: string) => {
+  const response = await axios.post(`${API_URL}/simulate-trade`, {
+    symbol,
+    shares,
+    price,
+    currency,
+    date
+  });
+  return response.data;
+};

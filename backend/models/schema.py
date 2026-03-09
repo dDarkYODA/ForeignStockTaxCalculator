@@ -34,6 +34,7 @@ class Lot(Base):
     price = Column(Float)
     cost_inr = Column(Float)
     available_shares = Column(Float)
+    currency = Column(String)
 
 class TaxCalculation(Base):
     __tablename__ = "tax_calculations"

@@ -33,9 +33,8 @@ def match_sell_fifo(db: Session, user_id: str, symbol: str, shares_to_sell: floa
         holding_type = "LTCG" if months_held > 24 else "STCG"
 
         # Calculate costs and gains
-        # Cost INR is calculated based on the FX rate at the time of purchase
-        cost_fx_rate = fx_service.get_tt_buy_rate(lot.currency if hasattr(lot, 'currency') else 'USD', lot.date)
-        cost_inr = shares_matched * lot.price * cost_fx_rate
+        # Cost INR is prorated based on the lot's total cost_inr
+        cost_inr = (lot.cost_inr / lot.shares) * shares_matched if lot.shares > 0 else 0
 
         # Sale INR is calculated based on the FX rate at the time of sale
         sale_fx_rate = fx_service.get_tt_buy_rate(sell_currency, sell_date)

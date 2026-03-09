@@ -1,7 +1,21 @@
 from datetime import date
 from backend.models.transaction import Transaction
 from backend.services.tax_engine import process_transactions
-calculate_gains = process_transactions
+def calculate_gains(transactions):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from backend.models.database import Base
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    for t in transactions:
+        from backend.models.schema import Transaction as DBTransaction
+        db.add(DBTransaction(**t.dict(), user_id="test"))
+    db.commit()
+    process_transactions(db, "test")
+    from backend.models.schema import TaxCalculation
+    return db.query(TaxCalculation).all()
 
 def test_short_term_capital_gain():
     transactions = [

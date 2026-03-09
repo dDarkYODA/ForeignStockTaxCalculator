@@ -2,6 +2,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import UploadPage from './pages/UploadPage';
 import PreviewPage from './pages/PreviewPage';
 import ResultsPage from './pages/ResultsPage';
+import PortfolioPage from './pages/PortfolioPage';
+import SimulatorPage from './pages/SimulatorPage';
+import Navigation from './components/Navigation';
 
 function App() {
   return (
@@ -22,12 +25,17 @@ function App() {
           </div>
         </header>
 
-        <main>
-          <Routes>
-            <Route path="/" element={<UploadPage />} />
-            <Route path="/preview" element={<PreviewPage />} />
-            <Route path="/results" element={<ResultsPage />} />
-          </Routes>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <Navigation />
+          <div className="mt-6">
+            <Routes>
+              <Route path="/" element={<UploadPage />} />
+              <Route path="/preview" element={<PreviewPage />} />
+              <Route path="/results" element={<ResultsPage />} />
+              <Route path="/portfolio" element={<PortfolioPage />} />
+              <Route path="/simulator" element={<SimulatorPage />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </Router>

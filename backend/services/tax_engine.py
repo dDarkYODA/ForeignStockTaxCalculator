@@ -29,10 +29,9 @@ def process_transactions(db: Session, user_id: str):
                 shares=txn.shares,
                 price=txn.price,
                 cost_inr=cost_inr,
-                available_shares=txn.shares
+                available_shares=txn.shares,
+                currency=txn.currency
             )
-            # Add currency dynamically if needed, schema currently doesn't have it on Lot but let's assume it inherits or defaults to USD.
-            lot.currency = txn.currency
             db.add(lot)
 
         elif txn.transaction_type == TransactionType.SELL:
