@@ -13,6 +13,12 @@ def parse_fidelity(df: pd.DataFrame) -> list:
     # Security -> symbol
 
     # Try to clean column names to make it robust
+    if isinstance(df, str):
+        import pandas as pd
+        try:
+            df = pd.read_csv(df)
+        except:
+            df = pd.read_excel(df)
     df.columns = [str(c).strip() for c in df.columns]
 
     # Look for expected columns

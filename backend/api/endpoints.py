@@ -150,3 +150,131 @@ def get_results(db: Session = Depends(get_db)):
     """
     results = db.query(TaxCalculation).filter(TaxCalculation.user_id == MOCK_USER_ID).order_by(TaxCalculation.date).all()
     return results
+
+from backend.services.portfolio_service import get_portfolio
+from backend.services.trade_simulator import simulate_trade
+from datetime import date
+from typing import Dict, Optional
+
+class SimulateTradeRequest(BaseModel):
+    symbol: str
+    shares: float
+    price: float
+    currency: str
+    date: date
+
+@router.get("/portfolio")
+def api_get_portfolio(manual_prices: Optional[str] = None, db: Session = Depends(get_db)):
+    """
+    Returns portfolio holdings and summary statistics.
+    manual_prices can be passed as a JSON string mapping symbols to prices.
+    """
+    prices_dict = {}
+    if manual_prices:
+        import json
+        try:
+            prices_dict = json.loads(manual_prices)
+        except Exception:
+            pass
+
+    return get_portfolio(db, MOCK_USER_ID, prices_dict)
+
+@router.post("/simulate-trade")
+def api_simulate_trade(request: SimulateTradeRequest, db: Session = Depends(get_db)):
+    """
+    Simulates a trade and returns tax estimations.
+    """
+    try:
+        return simulate_trade(
+            db=db,
+            user_id=MOCK_USER_ID,
+            symbol=request.symbol,
+            shares=request.shares,
+            price=request.price,
+            currency=request.currency,
+            sale_date=request.date
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Error simulating trade: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/holdings")
+def api_get_holdings(db: Session = Depends(get_db)):
+    """
+    Returns only the portfolio holdings.
+    """
+    portfolio = get_portfolio(db, MOCK_USER_ID, {})
+    return portfolio["holdings"]
+
+@router.get("/capital-gains")
+def api_get_capital_gains(db: Session = Depends(get_db)):
+    """
+    Alias for /results to return the capital gains results.
+    """
+    return get_results(db)
+
+from backend.services.portfolio_service import get_portfolio
+from backend.services.trade_simulator import simulate_trade
+from datetime import date
+from typing import Dict, Optional
+
+class SimulateTradeRequest(BaseModel):
+    symbol: str
+    shares: float
+    price: float
+    currency: str
+    date: date
+
+@router.get("/portfolio")
+def api_get_portfolio(manual_prices: Optional[str] = None, db: Session = Depends(get_db)):
+    """
+    Returns portfolio holdings and summary statistics.
+    manual_prices can be passed as a JSON string mapping symbols to prices.
+    """
+    prices_dict = {}
+    if manual_prices:
+        import json
+        try:
+            prices_dict = json.loads(manual_prices)
+        except Exception:
+            pass
+
+    return get_portfolio(db, MOCK_USER_ID, prices_dict)
+
+@router.post("/simulate-trade")
+def api_simulate_trade(request: SimulateTradeRequest, db: Session = Depends(get_db)):
+    """
+    Simulates a trade and returns tax estimations.
+    """
+    try:
+        return simulate_trade(
+            db=db,
+            user_id=MOCK_USER_ID,
+            symbol=request.symbol,
+            shares=request.shares,
+            price=request.price,
+            currency=request.currency,
+            sale_date=request.date
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Error simulating trade: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/holdings")
+def api_get_holdings(db: Session = Depends(get_db)):
+    """
+    Returns only the portfolio holdings.
+    """
+    portfolio = get_portfolio(db, MOCK_USER_ID, {})
+    return portfolio["holdings"]
+
+@router.get("/capital-gains")
+def api_get_capital_gains(db: Session = Depends(get_db)):
+    """
+    Alias for /results to return the capital gains results.
+    """
+    return get_results(db)
