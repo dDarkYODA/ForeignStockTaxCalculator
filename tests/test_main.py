@@ -1,13 +1,13 @@
+
 from fastapi.testclient import TestClient
 from backend.main import app
 from datetime import date
-from backend.models.schema import Transaction as DBTransaction
-from backend.models.schema import Lot, TaxCalculation
-from backend.models.database import get_db, Base, engine
-from backend.services.tax_engine import process_transactions
 import tempfile
 import os
 import csv
+from backend.models.database import get_db, Base, engine
+from backend.models.schema import Transaction as DBTransaction, Lot, TaxCalculation
+from backend.services.tax_engine import process_transactions
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -26,12 +26,25 @@ def setup_db_with_transactions(transactions):
         db.commit()
         process_transactions(db, "mock_user")
 
+
+def setup_db_with_transactions(transactions):
+    with next(get_db()) as db:
+        db.query(TaxCalculation).delete()
+        db.query(Lot).delete()
+        db.query(DBTransaction).delete()
+        db.commit()
+        for tx in transactions:
+            db_tx = DBTransaction(**tx, user_id="mock_user")
+            db.add(db_tx)
+        db.commit()
+        process_transactions(db, "mock_user")
+
 def test_read_root():
     """Test root endpoint returns OK status"""
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "ok" if "status" in data else True
+    assert data["status"] == "ok" if "status" in data else True if "status" in data else True
 
 def test_upload_shareworks_valid():
     """Test uploading a valid Shareworks CSV file"""
@@ -50,6 +63,9 @@ def test_upload_shareworks_valid():
             )
 
         assert response.status_code == 200
+        response_data = response.json()
+        assert response_data['status'] == 'success'
+        transactions = client.get('/api/transactions').json()
         response_data = response.json()
         assert response_data['status'] == 'success'
         transactions = client.get('/api/transactions').json()
@@ -76,6 +92,9 @@ def test_upload_fidelity_valid():
             )
 
         assert response.status_code == 200
+        response_data = response.json()
+        assert response_data['status'] == 'success'
+        transactions = client.get('/api/transactions').json()
         response_data = response.json()
         assert response_data['status'] == 'success'
         transactions = client.get('/api/transactions').json()
@@ -120,7 +139,7 @@ def test_upload_invalid_file():
             )
 
         # Should return error for invalid file
-        assert response.status_code in [400, 500]
+        assert response.status_code == 400
     finally:
         os.unlink(temp_file)
 
@@ -215,6 +234,9 @@ def test_upload_empty_csv():
             )
 
         assert response.status_code == 200
+        response_data = response.json()
+        assert response_data['status'] == 'success'
+        transactions = client.get('/api/transactions').json()
         response_data = response.json()
         assert response_data['status'] == 'success'
         transactions = client.get('/api/transactions').json()

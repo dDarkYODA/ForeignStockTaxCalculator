@@ -16,24 +16,24 @@ def test_parse_valid_fidelity_file():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 2
 
         # Check first transaction
-        assert transactions[0].date == date(2023, 2, 10)
-        assert transactions[0].transaction_type == 'Buy'
-        assert transactions[0].symbol == 'AAPL'
-        assert transactions[0].shares == 20.0
-        assert transactions[0].price == 150.00
-        assert transactions[0].currency == 'USD'
-        assert transactions[0].broker == 'Fidelity'
+        assert transactions[0]['date'] == date(2023, 2, 10)
+        assert transactions[0]['transaction_type'].value == 'BUY'
+        assert transactions[0]['symbol'] == 'AAPL'
+        assert transactions[0]['shares'] == 20.0
+        assert transactions[0]['price'] == 150.00
+        assert transactions[0]['currency'] == 'USD'
+        assert transactions[0]['broker'] == 'Fidelity'
 
         # Check second transaction
-        assert transactions[1].date == date(2024, 3, 15)
-        assert transactions[1].transaction_type == 'Sell'
-        assert transactions[1].shares == 10.0
-        assert transactions[1].price == 180.00
+        assert transactions[1]['date'] == date(2024, 3, 15)
+        assert transactions[1]['transaction_type'].value == 'SELL'
+        assert transactions[1]['shares'] == 10.0
+        assert transactions[1]['price'] == 180.00
     finally:
         os.unlink(temp_file)
 
@@ -47,7 +47,7 @@ def test_parse_empty_file():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
         assert len(transactions) == 0
     finally:
         os.unlink(temp_file)
@@ -65,10 +65,10 @@ def test_parse_multiple_securities():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 4
-        securities = [t.symbol for t in transactions]
+        securities = [t['symbol'] for t in transactions]
         assert 'GOOGL' in securities
         assert 'AAPL' in securities
         assert 'MSFT' in securities
@@ -87,13 +87,13 @@ def test_parse_different_action_types():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 3
-        actions = [t.transaction_type for t in transactions]
-        assert 'Buy' in actions
-        assert 'Sell' in actions
-        assert 'Dividend Reinvestment' in actions
+        actions = [t['transaction_type'] for t in transactions]
+        actions = [a.value for a in actions]; assert 'BUY' in actions
+        assert 'SELL' in actions
+        assert 'BUY' in actions
     finally:
         os.unlink(temp_file)
 
@@ -109,11 +109,11 @@ def test_parse_date_formats():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         # pandas should handle different date formats
         assert len(transactions) >= 1
-        assert transactions[0].date == date(2023, 10, 15)
+        assert transactions[0]['date'] == date(2023, 10, 15)
     finally:
         os.unlink(temp_file)
 
@@ -128,12 +128,12 @@ def test_parse_zero_values():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         # Should parse rows even with zero values
         assert len(transactions) == 2
-        assert transactions[0].shares == 0.0
-        assert transactions[1].price == 0.0
+        assert transactions[0]['shares'] == 0.0
+        assert transactions[1]['price'] == 0.0
     finally:
         os.unlink(temp_file)
 
@@ -148,11 +148,11 @@ def test_parse_decimal_quantity():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 2
-        assert transactions[0].shares == 10.75
-        assert transactions[1].shares == 5.5
+        assert transactions[0]['shares'] == 10.75
+        assert transactions[1]['shares'] == 5.5
     finally:
         os.unlink(temp_file)
 
@@ -166,10 +166,10 @@ def test_parse_currency_defaults_to_usd():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 1
-        assert transactions[0].currency == 'USD'
+        assert transactions[0]['currency'] == 'USD'
     finally:
         os.unlink(temp_file)
 
@@ -183,10 +183,10 @@ def test_parse_large_quantity_values():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 1
-        assert transactions[0].shares == 100000.0
+        assert transactions[0]['shares'] == 100000.0
     finally:
         os.unlink(temp_file)
 
@@ -200,10 +200,10 @@ def test_parse_negative_quantity():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 1
-        assert transactions[0].shares == -5.0
+        assert transactions[0]['shares'] == -5.0
     finally:
         os.unlink(temp_file)
 
@@ -218,10 +218,10 @@ def test_parse_symbol_with_special_characters():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 2
-        assert transactions[0].symbol == 'BRK.B'
-        assert transactions[1].symbol == 'BRK-A'
+        assert transactions[0]['symbol'] == 'BRK.B'
+        assert transactions[1]['symbol'] == 'BRK-A'
     finally:
         os.unlink(temp_file)

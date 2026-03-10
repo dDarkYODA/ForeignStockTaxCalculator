@@ -28,9 +28,15 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
 
     try:
         if filename.endswith('.csv'):
-            df = pd.read_csv(io.BytesIO(content))
+            try:
+                df = pd.read_csv(io.BytesIO(content))
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid CSV format")
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
-            df = pd.read_excel(io.BytesIO(content))
+            try:
+                df = pd.read_excel(io.BytesIO(content))
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid Excel format")
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format")
 
@@ -75,6 +81,9 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
 
     except HTTPException:
         raise
+    except ValueError as ve:
+        print(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(f"Error processing upload: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -135,6 +144,9 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
 
     except HTTPException:
         raise
+    except ValueError as ve:
+        print(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(f"Error processing upload: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -196,6 +208,9 @@ def api_simulate_trade(request: SimulateTradeRequest, db: Session = Depends(get_
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as ve:
+        print(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(f"Error simulating trade: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

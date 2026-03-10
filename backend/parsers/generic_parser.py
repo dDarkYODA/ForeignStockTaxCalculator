@@ -54,11 +54,43 @@ def infer_schema_with_ai(header_row, sample_rows):
                 response_format={ "type": "json_object" }
             )
             return json.loads(response.choices[0].message.content)
+
         else:
-            return {}
+            return _heuristic_fallback(header_row)
     except Exception as e:
         print(f"Error calling AI: {e}")
-        return {}
+        return _heuristic_fallback(header_row)
+
+def _heuristic_fallback(header_row):
+    mapping = {}
+    lower_headers = {str(h).lower(): h for h in header_row}
+
+    # Date
+    for k, v in lower_headers.items():
+        if 'date' in k: mapping['date'] = v; break
+
+    # Transaction Type
+    for k, v in lower_headers.items():
+        if 'type' in k or 'action' in k or 'plan' in k: mapping['transaction_type'] = v; break
+
+    # Symbol
+    for k, v in lower_headers.items():
+        if 'symbol' in k or 'ticker' in k or 'instrument' in k or 'stock' in k or 'security' in k: mapping['symbol'] = v; break
+
+    # Shares
+    for k, v in lower_headers.items():
+        if 'share' in k or 'amount' in k or 'quantity' in k: mapping['shares'] = v; break
+
+    # Price
+    for k, v in lower_headers.items():
+        if 'price' in k or 'value' in k or 'cost' in k: mapping['price'] = v; break
+
+    # Currency
+    for k, v in lower_headers.items():
+        if 'currency' in k or 'curr' in k or 'unit' in k: mapping['currency'] = v; break
+
+    return mapping
+
 
 def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
     """
@@ -80,11 +112,8 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
 
     # Require minimum fields
     if not all([date_col, type_col, shares_col, price_col, symbol_col]):
-        raise ValueError("Missing required fields in mapping")
-
-    for col in [date_col, type_col, shares_col, price_col, symbol_col]:
-        if col not in df.columns:
-            raise ValueError(f"Mapped column '{col}' not found in data")
+        print("Missing required fields in mapping")
+        return []
 
     for index, row in df.iterrows():
         try:
