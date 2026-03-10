@@ -4,6 +4,7 @@ infer_schema = infer_schema_with_ai
 import tempfile
 import csv
 import os
+import pandas as pd
 
 
 def test_infer_schema_fallback_basic():
@@ -20,7 +21,8 @@ def test_infer_schema_fallback_basic():
         if old_key:
             del os.environ['OPENAI_API_KEY']
 
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
 
         assert 'date' in schema
         assert 'transaction_type' in schema
@@ -52,7 +54,8 @@ def test_infer_schema_with_varied_column_names():
         if old_key:
             del os.environ['OPENAI_API_KEY']
 
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
 
         # Should map settlement date to date
         assert 'Date' in schema['date']
@@ -85,7 +88,8 @@ def test_parse_with_custom_mapping():
             'currency': 'Curr'
         }
 
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file), mapping=mapping)
+        df = pd.read_csv(temp_file)
+        transactions = parse(df, mapping=mapping)
 
         assert len(transactions) == 2
         assert transactions[0]['symbol'] == 'MSFT'
@@ -109,7 +113,8 @@ def test_parse_without_mapping_infers_schema():
         if old_key:
             del os.environ['OPENAI_API_KEY']
 
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['symbol'] == 'NFLX'
@@ -132,7 +137,8 @@ def test_parse_handles_invalid_numeric_values():
         temp_file = f.name
 
     try:
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
 
         # Should only parse the 2 valid rows
         assert len(transactions) == 2
@@ -151,14 +157,16 @@ def test_parse_handles_missing_columns():
         temp_file = f.name
 
     try:
-        # Should use fallback mapping and handle missing values
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
-
-        # Rows without required fields should be skipped or handled with defaults
-        # Based on the code, it will skip rows where shares_key or price_key don't exist
-        assert len(transactions) == 0
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        try:
+            transactions = parse(df, mapping=schema)
+            assert False, "Expected ValueError"
+        except ValueError as e:
+            assert "Missing required standard names in mapping" in str(e)
     finally:
         os.unlink(temp_file)
+
 
 
 def test_parse_sets_default_broker():
@@ -170,7 +178,8 @@ def test_parse_sets_default_broker():
         temp_file = f.name
 
     try:
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['broker'] == 'Generic'
@@ -187,7 +196,8 @@ def test_parse_handles_empty_file():
         temp_file = f.name
 
     try:
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
         assert len(transactions) == 0
     finally:
         os.unlink(temp_file)
@@ -206,7 +216,8 @@ def test_infer_schema_with_instrument_column():
         if old_key:
             del os.environ['OPENAI_API_KEY']
 
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
 
         assert 'Instrument' in schema['symbol']
     finally:
@@ -228,7 +239,8 @@ def test_parse_with_cost_basis_column():
         if old_key:
             del os.environ['OPENAI_API_KEY']
 
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         # Cost Basis should map to price
@@ -248,7 +260,8 @@ def test_parse_defaults_to_usd_currency():
         temp_file = f.name
 
     try:
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['currency'] == 'USD'
@@ -266,7 +279,8 @@ def test_parse_handles_zero_values():
         temp_file = f.name
 
     try:
-        import pandas as pd; df = pd.read_csv(temp_file); schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        df = pd.read_csv(temp_file)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
 
         # Should parse rows even with zero values
         assert len(transactions) == 2

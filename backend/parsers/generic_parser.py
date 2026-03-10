@@ -67,27 +67,39 @@ def _heuristic_fallback(header_row):
 
     # Date
     for k, v in lower_headers.items():
-        if 'date' in k: mapping['date'] = v; break
+        if 'date' in k:
+            mapping['date'] = v
+            break
 
     # Transaction Type
     for k, v in lower_headers.items():
-        if 'type' in k or 'action' in k or 'plan' in k: mapping['transaction_type'] = v; break
+        if 'type' in k or 'action' in k or 'plan' in k:
+            mapping['transaction_type'] = v
+            break
 
     # Symbol
     for k, v in lower_headers.items():
-        if 'symbol' in k or 'ticker' in k or 'instrument' in k or 'stock' in k or 'security' in k: mapping['symbol'] = v; break
+        if 'symbol' in k or 'ticker' in k or 'instrument' in k or 'stock' in k or 'security' in k:
+            mapping['symbol'] = v
+            break
 
     # Shares
     for k, v in lower_headers.items():
-        if 'share' in k or 'amount' in k or 'quantity' in k: mapping['shares'] = v; break
+        if 'share' in k or 'amount' in k or 'quantity' in k:
+            mapping['shares'] = v
+            break
 
     # Price
     for k, v in lower_headers.items():
-        if 'price' in k or 'value' in k or 'cost' in k: mapping['price'] = v; break
+        if 'price' in k or 'value' in k or 'cost' in k:
+            mapping['price'] = v
+            break
 
     # Currency
     for k, v in lower_headers.items():
-        if 'currency' in k or 'curr' in k or 'unit' in k: mapping['currency'] = v; break
+        if 'currency' in k or 'curr' in k or 'unit' in k:
+            mapping['currency'] = v
+            break
 
     return mapping
 
@@ -99,9 +111,6 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
     transactions = []
     
     cols = list(df.columns)
-    for key, val in mapping.items():
-        if val and val not in cols:
-            print(f"Warning: Fallback default '{val}' for standard name '{key}' is missing in the CSV columns.")
 
     date_col = mapping.get('date')
     type_col = mapping.get('transaction_type')
@@ -110,10 +119,19 @@ def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
     symbol_col = mapping.get('symbol')
     currency_col = mapping.get('currency')
 
-    # Require minimum fields
-    if not all([date_col, type_col, shares_col, price_col, symbol_col]):
-        print("Missing required fields in mapping")
-        return []
+    missing_keys = []
+    for key in ['date', 'transaction_type', 'shares', 'price', 'symbol']:
+        if not mapping.get(key):
+            missing_keys.append(key)
+    if missing_keys:
+        raise ValueError(f"Missing required standard names in mapping: {', '.join(missing_keys)}")
+
+    missing_cols = []
+    for key, val in mapping.items():
+        if val and val not in cols:
+            missing_cols.append(f"'{val}' (for '{key}')")
+    if missing_cols:
+        raise ValueError(f"Fallback defaults missing in CSV columns: {', '.join(missing_cols)}")
 
     for index, row in df.iterrows():
         try:

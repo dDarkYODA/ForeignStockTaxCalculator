@@ -9,6 +9,9 @@ from backend.services.tax_engine import process_transactions
 from pydantic import BaseModel
 import pandas as pd
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -31,7 +34,7 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
             try:
                 df = pd.read_csv(io.BytesIO(content))
             except Exception:
-                raise HTTPException(status_code=400, detail="Invalid CSV format")
+                raise HTTPException(status_code=400, detail="Invalid CSV format") from None
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
             try:
                 df = pd.read_excel(io.BytesIO(content))
@@ -82,8 +85,8 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
     except HTTPException:
         raise
     except ValueError as ve:
-        print(f"Validation error: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve)) from None
     except Exception as e:
         print(f"Error processing upload: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -145,8 +148,8 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
     except HTTPException:
         raise
     except ValueError as ve:
-        print(f"Validation error: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve)) from None
     except Exception as e:
         print(f"Error processing upload: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -207,10 +210,8 @@ def api_simulate_trade(request: SimulateTradeRequest, db: Session = Depends(get_
             sale_date=request.date
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except ValueError as ve:
-        print(f"Validation error: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e)) from None
     except Exception as e:
         print(f"Error simulating trade: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

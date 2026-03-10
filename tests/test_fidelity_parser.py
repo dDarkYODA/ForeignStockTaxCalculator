@@ -4,6 +4,7 @@ from datetime import date
 import tempfile
 import csv
 import os
+import pandas as pd
 
 
 def test_parse_valid_fidelity_file():
@@ -16,7 +17,8 @@ def test_parse_valid_fidelity_file():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 2
 
@@ -47,7 +49,8 @@ def test_parse_empty_file():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
         assert len(transactions) == 0
     finally:
         os.unlink(temp_file)
@@ -65,7 +68,8 @@ def test_parse_multiple_securities():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 4
         securities = [t['symbol'] for t in transactions]
@@ -87,13 +91,14 @@ def test_parse_different_action_types():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 3
-        actions = [t['transaction_type'] for t in transactions]
-        actions = [a.value for a in actions]; assert 'BUY' in actions
-        assert 'SELL' in actions
-        assert 'BUY' in actions
+        actions = [t['transaction_type'].value for t in transactions]
+        assert actions.count('BUY') == 2
+        assert actions.count('SELL') == 1
+        assert actions == ['BUY', 'SELL', 'BUY']
     finally:
         os.unlink(temp_file)
 
@@ -109,7 +114,8 @@ def test_parse_date_formats():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         # pandas should handle different date formats
         assert len(transactions) >= 1
@@ -128,7 +134,8 @@ def test_parse_zero_values():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         # Should parse rows even with zero values
         assert len(transactions) == 2
@@ -148,7 +155,8 @@ def test_parse_decimal_quantity():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 2
         assert transactions[0]['shares'] == 10.75
@@ -166,7 +174,8 @@ def test_parse_currency_defaults_to_usd():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 1
         assert transactions[0]['currency'] == 'USD'
@@ -183,7 +192,8 @@ def test_parse_large_quantity_values():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 1
         assert transactions[0]['shares'] == 100000.0
@@ -200,7 +210,8 @@ def test_parse_negative_quantity():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 1
         assert transactions[0]['shares'] == -5.0
@@ -218,7 +229,8 @@ def test_parse_symbol_with_special_characters():
         temp_file = f.name
 
     try:
-        import pandas as pd; transactions = parse(pd.read_csv(temp_file))
+        df = pd.read_csv(temp_file)
+        transactions = parse(df)
 
         assert len(transactions) == 2
         assert transactions[0]['symbol'] == 'BRK.B'

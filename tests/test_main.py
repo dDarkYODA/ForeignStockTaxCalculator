@@ -5,48 +5,54 @@ from datetime import date
 import tempfile
 import os
 import csv
-from backend.models.database import get_db, Base, engine
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from backend.models.database import get_db, Base
 from backend.models.schema import Transaction as DBTransaction, Lot, TaxCalculation
 from backend.services.tax_engine import process_transactions
 
-Base.metadata.drop_all(bind=engine)
-Base.metadata.create_all(bind=engine)
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-client = TestClient(app)
-
-def setup_db_with_transactions(transactions):
-    with next(get_db()) as db:
-        db.query(TaxCalculation).delete()
-        db.query(Lot).delete()
-        db.query(DBTransaction).delete()
-        db.commit()
-        for tx in transactions:
-            db_tx = DBTransaction(**tx, user_id="mock_user")
-            db.add(db_tx)
-        db.commit()
-        process_transactions(db, "mock_user")
+@pytest.fixture(scope="function")
+def db_session():
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    yield db
+    db.close()
+    Base.metadata.drop_all(bind=engine)
 
 
-def setup_db_with_transactions(transactions):
-    with next(get_db()) as db:
-        db.query(TaxCalculation).delete()
-        db.query(Lot).delete()
-        db.query(DBTransaction).delete()
-        db.commit()
-        for tx in transactions:
-            db_tx = DBTransaction(**tx, user_id="mock_user")
-            db.add(db_tx)
-        db.commit()
-        process_transactions(db, "mock_user")
+@pytest.fixture(scope="function")
+def client(db_session):
+    def override_get_db():
+        yield db_session
+    app.dependency_overrides[get_db] = override_get_db
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
-def test_read_root():
+def setup_db_with_transactions(transactions, db):
+    db.query(TaxCalculation).delete()
+    db.query(Lot).delete()
+    db.query(DBTransaction).delete()
+    db.commit()
+    for tx in transactions:
+        db_tx = DBTransaction(**tx, user_id="mock_user")
+        db.add(db_tx)
+    db.commit()
+    process_transactions(db, "mock_user")
+
+def test_read_root(client):
     """Test root endpoint returns OK status"""
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "ok" if "status" in data else True if "status" in data else True
+    assert "message" in data
+    assert data["message"] == "Welcome to the Foreign Stock Tax Calculator API"
 
-def test_upload_shareworks_valid():
+def test_upload_shareworks_valid(client):
     """Test uploading a valid Shareworks CSV file"""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
         writer = csv.writer(f)
@@ -75,7 +81,7 @@ def test_upload_shareworks_valid():
     finally:
         os.unlink(temp_file)
 
-def test_upload_fidelity_valid():
+def test_upload_fidelity_valid(client):
     """Test uploading a valid Fidelity CSV file"""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
         writer = csv.writer(f)
@@ -104,7 +110,7 @@ def test_upload_fidelity_valid():
     finally:
         os.unlink(temp_file)
 
-def test_upload_generic_parser():
+def test_upload_generic_parser(client):
     """Test uploading a file with unknown broker (triggers generic AI parser)"""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
         writer = csv.writer(f)
@@ -125,7 +131,7 @@ def test_upload_generic_parser():
     finally:
         os.unlink(temp_file)
 
-def test_upload_invalid_file():
+def test_upload_invalid_file(client):
     """Test uploading an invalid CSV file"""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
         f.write("This is not a valid CSV file\nwith proper structure")
@@ -143,12 +149,12 @@ def test_upload_invalid_file():
     finally:
         os.unlink(temp_file)
 
-def test_upload_missing_file():
+def test_upload_missing_file(client):
     """Test upload endpoint without providing a file"""
     response = client.post("/api/upload?broker=shareworks")
     assert response.status_code == 422  # Validation error
 
-def test_calculate_tax_valid():
+def test_calculate_tax_valid(client, db_session):
     """Test calculate endpoint with valid transactions"""
     transactions = [
         {
@@ -171,7 +177,7 @@ def test_calculate_tax_valid():
         }
     ]
 
-    setup_db_with_transactions(transactions)
+    setup_db_with_transactions(transactions, db_session)
     response = client.get("/api/capital-gains")
     assert response.status_code == 200
     results = response.json()
@@ -179,15 +185,15 @@ def test_calculate_tax_valid():
     assert results[0]['holding_type'] == 'STCG'
     assert results[0]['shares'] == 5.0
 
-def test_calculate_tax_empty_list():
+def test_calculate_tax_empty_list(client, db_session):
     """Test calculate endpoint with empty transaction list"""
-    setup_db_with_transactions([])
+    setup_db_with_transactions([], db_session)
     response = client.get("/api/capital-gains")
     assert response.status_code == 200
     results = response.json()
     assert len(results) == 0
 
-def test_calculate_tax_no_sales():
+def test_calculate_tax_no_sales(client, db_session):
     """Test calculate endpoint with only buy transactions"""
     transactions = [
         {
@@ -201,7 +207,7 @@ def test_calculate_tax_no_sales():
         }
     ]
 
-    setup_db_with_transactions(transactions)
+    setup_db_with_transactions(transactions, db_session)
     response = client.get("/api/capital-gains")
     assert response.status_code == 200
     results = response.json()
@@ -219,7 +225,7 @@ def test_cors_configuration():
 
     assert has_cors, "CORS middleware should be configured"
 
-def test_upload_empty_csv():
+def test_upload_empty_csv(client):
     """Test uploading an empty CSV file"""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
         writer = csv.writer(f)
@@ -244,7 +250,7 @@ def test_upload_empty_csv():
     finally:
         os.unlink(temp_file)
 
-def test_calculate_long_term_gains():
+def test_calculate_long_term_gains(client, db_session):
     """Test calculate endpoint with long-term capital gains (>24 months)"""
     transactions = [
         {
@@ -267,7 +273,7 @@ def test_calculate_long_term_gains():
         }
     ]
 
-    setup_db_with_transactions(transactions)
+    setup_db_with_transactions(transactions, db_session)
     response = client.get("/api/capital-gains")
     assert response.status_code == 200
     results = response.json()
