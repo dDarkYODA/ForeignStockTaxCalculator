@@ -9,9 +9,9 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentation
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentation
-from opentelemetry.instrumentation.requests import RequestsInstrumentation
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource
 
 # Set up resource for service identification
@@ -31,9 +31,9 @@ trace_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
 trace.set_tracer_provider(trace_provider)
 
 # Instrument libraries
-FastAPIInstrumentation().instrument()
-SQLAlchemyInstrumentation().instrument()
-RequestsInstrumentation().instrument()
+FastAPIInstrumentor().instrument()
+SQLAlchemyInstrumentor().instrument()
+RequestsInstrumentor().instrument()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)

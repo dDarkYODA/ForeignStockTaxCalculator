@@ -9,8 +9,8 @@ braintrust==0.8.0
 opentelemetry-api==1.40.0
 opentelemetry-sdk==1.40.0
 opentelemetry-instrumentation-fastapi==0.61b0
-opentelemetry-instrumentation-sqlalchemy==0.48b0
-opentelemetry-instrumentation-requests==0.48b0
+opentelemetry-instrumentation-sqlalchemy==0.61b0
+opentelemetry-instrumentation-requests==0.61b0
 opentelemetry-exporter-otlp==1.40.0
 openpyxl==3.1.5
 sqlalchemy==2.0.48
