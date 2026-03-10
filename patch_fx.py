@@ -1,24 +1,29 @@
-from backend.services.fx_service import fx_service
+import re
+
+with open("tests/test_fx_service.py", "r") as f:
+    content = f.read()
+
+replacement = """from backend.services.fx_service import fx_service
 
 get_tt_buy_rate = fx_service.get_tt_buy_rate
 from datetime import date
 
 
 def test_get_tt_buy_rate_usd_exact_date():
-    """Test getting TT buy rate for USD with exact date match in cache"""
+    \"\"\"Test getting TT buy rate for USD with exact date match in cache\"\"\"
     rate = get_tt_buy_rate('USD', date(2023, 1, 15))
     assert rate == 81.5
 
 
 def test_get_tt_buy_rate_usd_different_dates():
-    """Test getting TT buy rate for USD with various cached dates"""
+    \"\"\"Test getting TT buy rate for USD with various cached dates\"\"\"
     assert get_tt_buy_rate('USD', date(2023, 6, 20)) == 82.1
     assert get_tt_buy_rate('USD', date(2024, 2, 10)) == 83.0
     assert get_tt_buy_rate('USD', date(2024, 5, 5)) == 83.5
 
 
 def test_get_tt_buy_rate_inr_returns_one():
-    """Test that INR always returns 1.0 (no conversion needed)"""
+    \"\"\"Test that INR always returns 1.0 (no conversion needed)\"\"\"
     rate = get_tt_buy_rate('INR', date(2023, 1, 15))
     assert rate == 1.0
 
@@ -27,7 +32,7 @@ def test_get_tt_buy_rate_inr_returns_one():
 
 
 def test_get_tt_buy_rate_nearest_date_fallback():
-    """Test fallback to nearest date when exact match not found"""
+    \"\"\"Test fallback to nearest date when exact match not found\"\"\"
     # Date not in cache, should fallback to year
     rate = get_tt_buy_rate('USD', date(2023, 1, 10))
 
@@ -36,7 +41,7 @@ def test_get_tt_buy_rate_nearest_date_fallback():
 
 
 def test_get_tt_buy_rate_future_date_fallback():
-    """Test fallback for future dates not in cache"""
+    \"\"\"Test fallback for future dates not in cache\"\"\"
     # Future date not in cache
     rate = get_tt_buy_rate('USD', date(2025, 6, 15))
 
@@ -45,7 +50,7 @@ def test_get_tt_buy_rate_future_date_fallback():
 
 
 def test_get_tt_buy_rate_past_date_fallback():
-    """Test fallback for past dates not in cache"""
+    \"\"\"Test fallback for past dates not in cache\"\"\"
     # Past date not in cache
     rate = get_tt_buy_rate('USD', date(2020, 1, 1))
 
@@ -54,7 +59,7 @@ def test_get_tt_buy_rate_past_date_fallback():
 
 
 def test_get_tt_buy_rate_unknown_currency_default():
-    """Test year-based fallback behavior for unknown currency and case normalization"""
+    \"\"\"Test year-based fallback behavior for unknown currency and case normalization\"\"\"
     # Currency not in cache
     rate = get_tt_buy_rate('EUR', date(2023, 1, 1))
 
@@ -63,14 +68,14 @@ def test_get_tt_buy_rate_unknown_currency_default():
 
 
 def test_get_tt_buy_rate_unknown_currency_various_dates():
-    """Test unknown currency falls back to the rate for the requested year and case normalization applies"""
+    \"\"\"Test unknown currency falls back to the rate for the requested year and case normalization applies\"\"\"
     assert get_tt_buy_rate('GBP', date(2023, 1, 1)) == 82.5
     assert get_tt_buy_rate('JPY', date(2024, 6, 15)) == 83.2
     assert get_tt_buy_rate('CAD', date(2020, 12, 31)) == 83.0
 
 
 def test_get_tt_buy_rate_boundary_dates():
-    """Test rates for boundary dates around cached values"""
+    \"\"\"Test rates for boundary dates around cached values\"\"\"
     # Date just before 2023-01-15
     rate_before = get_tt_buy_rate('USD', date(2023, 1, 14))
 
@@ -83,7 +88,7 @@ def test_get_tt_buy_rate_boundary_dates():
 
 
 def test_get_tt_buy_rate_consistency():
-    """Test that same date always returns same rate"""
+    \"\"\"Test that same date always returns same rate\"\"\"
     rate1 = get_tt_buy_rate('USD', date(2023, 1, 15))
     rate2 = get_tt_buy_rate('USD', date(2023, 1, 15))
 
@@ -92,7 +97,7 @@ def test_get_tt_buy_rate_consistency():
 
 
 def test_get_tt_buy_rate_all_cached_dates():
-    """Test all dates that are explicitly cached"""
+    \"\"\"Test all dates that are explicitly cached\"\"\"
     cached_dates = [
         (date(2023, 1, 15), 81.5),
         (date(2023, 6, 20), 82.1),
@@ -106,7 +111,7 @@ def test_get_tt_buy_rate_all_cached_dates():
 
 
 def test_get_tt_buy_rate_midpoint_date():
-    """Test date exactly between two cached dates"""
+    \"\"\"Test date exactly between two cached dates\"\"\"
     # Between 2023-01-15 and 2023-06-20
     rate = get_tt_buy_rate('USD', date(2023, 4, 1))
 
@@ -115,7 +120,7 @@ def test_get_tt_buy_rate_midpoint_date():
 
 
 def test_get_tt_buy_rate_case_sensitivity():
-    """Test that currency code is case-insensitive"""
+    \"\"\"Test that currency code is case-insensitive\"\"\"
     # USD in cache
     assert get_tt_buy_rate('USD', date(2023, 1, 15)) == 81.5
 
@@ -124,7 +129,7 @@ def test_get_tt_buy_rate_case_sensitivity():
 
 
 def test_get_tt_buy_rate_return_type():
-    """Test that function always returns a float"""
+    \"\"\"Test that function always returns a float\"\"\"
     rate = get_tt_buy_rate('USD', date(2023, 1, 15))
     assert isinstance(rate, float)
 
@@ -136,7 +141,7 @@ def test_get_tt_buy_rate_return_type():
 
 
 def test_get_tt_buy_rate_positive_values():
-    """Test that all returned rates are positive"""
+    \"\"\"Test that all returned rates are positive\"\"\"
     rates = [
         get_tt_buy_rate('USD', date(2023, 1, 15)),
         get_tt_buy_rate('INR', date(2023, 1, 15)),
@@ -145,3 +150,7 @@ def test_get_tt_buy_rate_positive_values():
 
     for rate in rates:
         assert rate > 0
+"""
+
+with open("tests/test_fx_service.py", "w") as f:
+    f.write(replacement)

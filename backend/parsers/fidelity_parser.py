@@ -37,9 +37,13 @@ def parse_fidelity(df: pd.DataFrame) -> list:
                 continue
 
             action_str = str(row[action_col]).upper()
-            if 'VEST' in action_str:
+            if 'REINVESTMENT' in action_str:
+                tx_type = TransactionType.BUY
+            elif 'VEST' in action_str:
                 tx_type = TransactionType.RSU_VEST
             elif 'PURCHASE' in action_str or 'BUY' in action_str or 'REINVESTMENT' in action_str:
+                tx_type = TransactionType.BUY
+            elif 'DIVIDEND REINVESTMENT' in action_str:
                 tx_type = TransactionType.BUY
             elif 'SELL' in action_str or 'SALE' in action_str or 'ADJUSTMENT' in action_str:
                 tx_type = TransactionType.SELL
