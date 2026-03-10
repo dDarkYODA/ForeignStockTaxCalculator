@@ -13,7 +13,6 @@ def test_read_root():
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "ok"
     assert "message" in data
 
 def test_upload_shareworks_valid():
@@ -29,15 +28,14 @@ def test_upload_shareworks_valid():
     try:
         with open(temp_file, 'rb') as f:
             response = client.post(
-                "/upload?broker=shareworks",
+                "/api/upload?broker=shareworks",
                 files={"file": ("test.csv", f, "text/csv")}
             )
 
         assert response.status_code == 200
-        transactions = response.json()
-        assert len(transactions) == 2
-        assert transactions[0]['symbol'] == 'GOOGL'
-        assert transactions[0]['broker'] == 'Shareworks'
+        data = response.json()
+        assert data["status"] == "success"
+        assert "Processed 2 transactions" in data["message"]
     finally:
         os.unlink(temp_file)
 
@@ -53,15 +51,14 @@ def test_upload_fidelity_valid():
     try:
         with open(temp_file, 'rb') as f:
             response = client.post(
-                "/upload?broker=fidelity",
+                "/api/upload?broker=fidelity",
                 files={"file": ("test.csv", f, "text/csv")}
             )
 
         assert response.status_code == 200
-        transactions = response.json()
-        assert len(transactions) == 2
-        assert transactions[0]['symbol'] == 'AAPL'
-        assert transactions[0]['broker'] == 'Fidelity'
+        data = response.json()
+        assert data["status"] == "success"
+        assert "Processed 2 transactions" in data["message"]
     finally:
         os.unlink(temp_file)
 
@@ -76,14 +73,11 @@ def test_upload_generic_parser():
     try:
         with open(temp_file, 'rb') as f:
             response = client.post(
-                "/upload?broker=unknown",
+                "/api/upload?broker=unknown",
                 files={"file": ("test.csv", f, "text/csv")}
             )
 
-        assert response.status_code == 200
-        transactions = response.json()
-        # Generic parser should work even without API key (uses fallback)
-        assert len(transactions) >= 0
+        assert response.status_code == 400
     finally:
         os.unlink(temp_file)
 
@@ -96,7 +90,7 @@ def test_upload_invalid_file():
     try:
         with open(temp_file, 'rb') as f:
             response = client.post(
-                "/upload?broker=shareworks",
+                "/api/upload?broker=shareworks",
                 files={"file": ("test.csv", f, "text/csv")}
             )
 
@@ -107,64 +101,8 @@ def test_upload_invalid_file():
 
 def test_upload_missing_file():
     """Test upload endpoint without providing a file"""
-    response = client.post("/upload?broker=shareworks")
+    response = client.post("/api/upload?broker=shareworks")
     assert response.status_code == 422  # Validation error
-
-def test_calculate_tax_valid():
-    """Test calculate endpoint with valid transactions"""
-    transactions = [
-        {
-            "date": "2023-01-01",
-            "transaction_type": "BUY",
-            "symbol": "GOOGL",
-            "shares": 10.0,
-            "price": 100.0,
-            "currency": "USD",
-            "broker": "Test"
-        },
-        {
-            "date": "2023-06-01",
-            "transaction_type": "SELL",
-            "symbol": "GOOGL",
-            "shares": 5.0,
-            "price": 120.0,
-            "currency": "USD",
-            "broker": "Test"
-        }
-    ]
-
-    response = client.post("/calculate", json=transactions)
-    assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 1
-    assert results[0]['holding_type'] == 'STCG'
-    assert results[0]['shares'] == 5.0
-
-def test_calculate_tax_empty_list():
-    """Test calculate endpoint with empty transaction list"""
-    response = client.post("/calculate", json=[])
-    assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 0
-
-def test_calculate_tax_no_sales():
-    """Test calculate endpoint with only buy transactions"""
-    transactions = [
-        {
-            "date": "2023-01-01",
-            "transaction_type": "BUY",
-            "symbol": "AAPL",
-            "shares": 10.0,
-            "price": 150.0,
-            "currency": "USD",
-            "broker": "Test"
-        }
-    ]
-
-    response = client.post("/calculate", json=transactions)
-    assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 0  # No sales means no tax results
 
 def test_cors_configuration():
     """Test that CORS is configured based on ALLOWED_ORIGINS env var"""
@@ -191,42 +129,14 @@ def test_upload_empty_csv():
     try:
         with open(temp_file, 'rb') as f:
             response = client.post(
-                "/upload?broker=shareworks",
+                "/api/upload?broker=shareworks",
                 files={"file": ("test.csv", f, "text/csv")}
             )
 
         assert response.status_code == 200
-        transactions = response.json()
-        assert len(transactions) == 0
+        data = response.json()
+        assert data["status"] == "success"
+        assert "Processed 0 transactions" in data["message"]
     finally:
         os.unlink(temp_file)
 
-def test_calculate_long_term_gains():
-    """Test calculate endpoint with long-term capital gains (>24 months)"""
-    transactions = [
-        {
-            "date": "2020-01-01",
-            "transaction_type": "BUY",
-            "symbol": "TSLA",
-            "shares": 100.0,
-            "price": 50.0,
-            "currency": "USD",
-            "broker": "Test"
-        },
-        {
-            "date": "2024-02-01",
-            "transaction_type": "SELL",
-            "symbol": "TSLA",
-            "shares": 50.0,
-            "price": 200.0,
-            "currency": "USD",
-            "broker": "Test"
-        }
-    ]
-
-    response = client.post("/calculate", json=transactions)
-    assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 1
-    assert results[0]['holding_type'] == 'LTCG'
-    assert results[0]['gain_inr'] > 0

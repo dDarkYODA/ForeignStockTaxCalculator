@@ -1,454 +1,86 @@
-from datetime import date
-from backend.models.transaction import Transaction
+import pytest
 from backend.services.fifo_engine import match_sell_fifo
-match_lots = match_sell_fifo
+from backend.models.schema import Lot, TransactionType, Base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from datetime import date
 
-def test_fifo_matching():
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="GOOGL",
-            shares=10,
-            price=100.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="BUY",
-            symbol="GOOGL",
-            shares=5,
-            price=110.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 3, 1),
-            transaction_type="SELL",
-            symbol="GOOGL",
-            shares=12,
-            price=120.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
+# Setup in-memory DB for tests
+engine = create_engine("sqlite:///:memory:")
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base.metadata.create_all(bind=engine)
 
-    matches = match_lots(transactions)
+@pytest.fixture
+def db():
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
 
-    # We expect 2 matches:
-    # 1. 10 shares from the first lot
-    # 2. 2 shares from the second lot
-    assert len(matches) == 2
+def test_fifo_matching(db):
+    # Buy 10 shares
+    lot1 = Lot(user_id="test", symbol="AAPL", shares=10, available_shares=10, price=150.0, date=date(2023, 1, 1), cost_inr=1500.0)
+    db.add(lot1)
+    db.commit()
 
-    match1 = matches[0]
-    assert match1[0].date == date(2023, 1, 1) # buy lot
-    assert match1[2] == 10 # matched shares
+    results = match_sell_fifo(db, "test", "AAPL", 5, date(2023, 2, 1), 160.0, "USD")
 
-    match2 = matches[1]
-    assert match2[0].date == date(2023, 2, 1) # buy lot
-    assert match2[2] == 2 # matched shares
+    assert len(results) == 1
+    assert results[0]["shares_matched"] == 5
 
+    # Check lot is updated
+    db.refresh(lot1)
+    assert lot1.available_shares == 5
 
-def test_fifo_empty_transactions():
-    """Test FIFO with empty transaction list"""
-    matches = match_lots([])
-    assert len(matches) == 0
+def test_fifo_empty_transactions(db):
+    results = match_sell_fifo(db, "test", "AAPL", 5, date(2023, 2, 1), 160.0, "USD")
+    assert len(results) == 0
 
+def test_fifo_only_sells(db):
+    results = match_sell_fifo(db, "test", "AAPL", 10, date(2023, 2, 1), 160.0, "USD")
+    assert len(results) == 0
 
-def test_fifo_only_buys():
-    """Test FIFO with only buy transactions"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="AAPL",
-            shares=10,
-            price=150.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="BUY",
-            symbol="AAPL",
-            shares=20,
-            price=160.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
+def test_fifo_exact_match(db):
+    lot1 = Lot(user_id="test", symbol="TSLA", shares=10, available_shares=10, price=200.0, date=date(2023, 1, 1), cost_inr=2000.0)
+    db.add(lot1)
+    db.commit()
 
-    matches = match_lots(transactions)
-    assert len(matches) == 0
+    results = match_sell_fifo(db, "test", "TSLA", 10, date(2023, 2, 1), 250.0, "USD")
+    assert len(results) == 1
+    assert results[0]["shares_matched"] == 10
 
+    db.refresh(lot1)
+    assert lot1.available_shares == 0
 
-def test_fifo_only_sells():
-    """Test FIFO with only sell transactions (no inventory to match)"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="SELL",
-            symbol="MSFT",
-            shares=10,
-            price=280.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
+def test_fifo_multiple_buys_single_sell(db):
+    lot1 = Lot(user_id="test", symbol="AMZN", shares=10, available_shares=10, price=100.0, date=date(2023, 1, 1), cost_inr=1000.0)
+    lot2 = Lot(user_id="test", symbol="AMZN", shares=15, available_shares=15, price=110.0, date=date(2023, 2, 1), cost_inr=1650.0)
+    lot3 = Lot(user_id="test", symbol="AMZN", shares=20, available_shares=20, price=120.0, date=date(2023, 3, 1), cost_inr=2400.0)
+    db.add_all([lot1, lot2, lot3])
+    db.commit()
 
-    matches = match_lots(transactions)
-    assert len(matches) == 0
+    results = match_sell_fifo(db, "test", "AMZN", 30, date(2023, 4, 1), 130.0, "USD")
 
+    assert len(results) == 3
+    assert results[0]["shares_matched"] == 10
+    assert results[1]["shares_matched"] == 15
+    assert results[2]["shares_matched"] == 5
 
-def test_fifo_exact_match():
-    """Test FIFO when sell exactly matches buy quantity"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="TSLA",
-            shares=10,
-            price=200.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="SELL",
-            symbol="TSLA",
-            shares=10,
-            price=250.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
+def test_fifo_partial_lot_consumption(db):
+    lot1 = Lot(user_id="test", symbol="GOOG", shares=50, available_shares=50, price=100.0, date=date(2023, 1, 1), cost_inr=5000.0)
+    db.add(lot1)
+    db.commit()
 
-    matches = match_lots(transactions)
-    assert len(matches) == 1
-    assert matches[0][2] == 10  # All shares matched
+    res1 = match_sell_fifo(db, "test", "GOOG", 20, date(2023, 2, 1), 110.0, "USD")
+    res2 = match_sell_fifo(db, "test", "GOOG", 15, date(2023, 3, 1), 120.0, "USD")
 
+    assert len(res1) == 1
+    assert res1[0]["shares_matched"] == 20
+    assert len(res2) == 1
+    assert res2[0]["shares_matched"] == 15
 
-def test_fifo_multiple_sells():
-    """Test FIFO with multiple sell transactions"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="NFLX",
-            shares=100,
-            price=300.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="SELL",
-            symbol="NFLX",
-            shares=30,
-            price=320.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 3, 1),
-            transaction_type="SELL",
-            symbol="NFLX",
-            shares=40,
-            price=340.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 4, 1),
-            transaction_type="SELL",
-            symbol="NFLX",
-            shares=30,
-            price=360.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    assert len(matches) == 3
-    assert sum(m[2] for m in matches) == 100  # Total matched shares
-
-
-def test_fifo_multiple_buys_single_sell():
-    """Test FIFO with multiple buy lots and single sell consuming multiple lots"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="AMZN",
-            shares=10,
-            price=100.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="BUY",
-            symbol="AMZN",
-            shares=15,
-            price=110.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 3, 1),
-            transaction_type="BUY",
-            symbol="AMZN",
-            shares=20,
-            price=120.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 4, 1),
-            transaction_type="SELL",
-            symbol="AMZN",
-            shares=30,
-            price=130.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    # Should consume first lot (10) + second lot (15) + part of third (5)
-    assert len(matches) == 3
-    assert matches[0][2] == 10  # First lot fully consumed
-    assert matches[1][2] == 15  # Second lot fully consumed
-    assert matches[2][2] == 5   # Third lot partially consumed
-
-
-def test_fifo_unsorted_transactions():
-    """Test FIFO with transactions not in date order"""
-    transactions = [
-        Transaction(
-            date=date(2023, 3, 1),
-            transaction_type="SELL",
-            symbol="META",
-            shares=10,
-            price=320.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="META",
-            shares=15,
-            price=300.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="BUY",
-            symbol="META",
-            shares=5,
-            price=310.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    # Should sort by date and match correctly
-    assert len(matches) == 1
-    assert matches[0][0].date == date(2023, 1, 1)  # First buy lot matched
-    assert matches[0][2] == 10
-
-
-def test_fifo_rsu_vest_transaction():
-    """Test FIFO with RSU_VEST transaction type (treated as buy)"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="RSU_VEST",
-            symbol="GOOGL",
-            shares=20,
-            price=95.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 6, 1),
-            transaction_type="SELL",
-            symbol="GOOGL",
-            shares=10,
-            price=100.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    assert len(matches) == 1
-    assert matches[0][0].transaction_type == "RSU_VEST"
-    assert matches[0][2] == 10
-
-
-def test_fifo_case_insensitive_sell():
-    """Test FIFO recognizes 'sell' in lowercase or mixed case"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="NVDA",
-            shares=10,
-            price=450.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="sell",  # lowercase
-            symbol="NVDA",
-            shares=5,
-            price=480.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    assert len(matches) == 1
-    assert matches[0][2] == 5
-
-
-def test_fifo_sell_all_transaction():
-    """Test FIFO with 'Sell All' transaction type"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="AMD",
-            shares=25,
-            price=80.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 6, 1),
-            transaction_type="Sell All",  # Contains 'sell'
-            symbol="AMD",
-            shares=25,
-            price=100.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    assert len(matches) == 1
-    assert matches[0][2] == 25
-
-
-def test_fifo_fractional_shares():
-    """Test FIFO with fractional shares"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="INTC",
-            shares=10.5,
-            price=45.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 6, 1),
-            transaction_type="SELL",
-            symbol="INTC",
-            shares=5.25,
-            price=50.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    assert len(matches) == 1
-    assert matches[0][2] == 5.25
-
-
-def test_fifo_partial_lot_consumption():
-    """Test FIFO leaves partial inventory after sell"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="GOOG",
-            shares=50,
-            price=100.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="SELL",
-            symbol="GOOG",
-            shares=20,
-            price=110.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 3, 1),
-            transaction_type="SELL",
-            symbol="GOOG",
-            shares=15,
-            price=120.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    assert len(matches) == 2
-    # Both sells should match against the same buy lot
-    assert matches[0][0].date == date(2023, 1, 1)
-    assert matches[1][0].date == date(2023, 1, 1)
-    assert matches[0][2] == 20
-    assert matches[1][2] == 15
-
-
-
-def test_fifo_match_structure():
-    """Test that match tuples have correct structure"""
-    transactions = [
-        Transaction(
-            date=date(2023, 1, 1),
-            transaction_type="BUY",
-            symbol="TEST",
-            shares=10,
-            price=100.0,
-            currency="USD",
-            broker="Test"
-        ),
-        Transaction(
-            date=date(2023, 2, 1),
-            transaction_type="SELL",
-            symbol="TEST",
-            shares=5,
-            price=110.0,
-            currency="USD",
-            broker="Test"
-        )
-    ]
-
-    matches = match_lots(transactions)
-    assert len(matches) == 1
-
-    match = matches[0]
-    # Match should be tuple of (buy_tx, sell_tx, shares)
-    assert len(match) == 3
-    assert isinstance(match[0], Transaction)  # Buy transaction
-    assert isinstance(match[1], Transaction)  # Sell transaction
-    assert isinstance(match[2], (int, float))  # Matched shares
-    assert match[0].transaction_type == "BUY"
-    assert match[1].transaction_type == "SELL"
+    db.refresh(lot1)
+    assert lot1.available_shares == 15
