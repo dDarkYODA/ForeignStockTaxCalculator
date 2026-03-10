@@ -1,3 +1,4 @@
+import pandas as pd
 from backend.parsers.fidelity_parser import parse_fidelity
 parse = parse_fidelity
 from datetime import date
@@ -16,7 +17,7 @@ def test_parse_valid_fidelity_file():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 2
 
@@ -47,7 +48,7 @@ def test_parse_empty_file():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
         assert len(transactions) == 0
     finally:
         os.unlink(temp_file)
@@ -65,7 +66,7 @@ def test_parse_multiple_securities():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 4
         securities = [t.symbol for t in transactions]
@@ -87,7 +88,7 @@ def test_parse_different_action_types():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 3
         actions = [t.transaction_type for t in transactions]
@@ -109,7 +110,7 @@ def test_parse_date_formats():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         # pandas should handle different date formats
         assert len(transactions) >= 1
@@ -128,7 +129,7 @@ def test_parse_zero_values():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         # Should parse rows even with zero values
         assert len(transactions) == 2
@@ -148,7 +149,7 @@ def test_parse_decimal_quantity():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 2
         assert transactions[0].shares == 10.75
@@ -166,7 +167,7 @@ def test_parse_currency_defaults_to_usd():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 1
         assert transactions[0].currency == 'USD'
@@ -183,7 +184,7 @@ def test_parse_large_quantity_values():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 1
         assert transactions[0].shares == 100000.0
@@ -200,7 +201,7 @@ def test_parse_negative_quantity():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 1
         assert transactions[0].shares == -5.0
@@ -218,7 +219,7 @@ def test_parse_symbol_with_special_characters():
         temp_file = f.name
 
     try:
-        transactions = parse(temp_file)
+        transactions = parse(pd.read_csv(temp_file))
 
         assert len(transactions) == 2
         assert transactions[0].symbol == 'BRK.B'
