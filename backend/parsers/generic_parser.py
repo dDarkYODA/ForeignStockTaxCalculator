@@ -54,11 +54,31 @@ def infer_schema_with_ai(header_row, sample_rows):
                 response_format={ "type": "json_object" }
             )
             return json.loads(response.choices[0].message.content)
+
         else:
-            return {}
+            return fallback_infer(header_row)
     except Exception as e:
         print(f"Error calling AI: {e}")
-        return {}
+        return fallback_infer(header_row)
+
+def fallback_infer(header_row):
+    mapping = {}
+    for col in header_row:
+        c = str(col).lower()
+        if 'date' in c and not mapping.get('date'):
+            mapping['date'] = col
+        elif ('type' in c or 'action' in c) and not mapping.get('transaction_type'):
+            mapping['transaction_type'] = col
+        elif ('share' in c or 'qty' in c or 'quantity' in c or 'amount' in c) and not mapping.get('shares'):
+            mapping['shares'] = col
+        elif ('price' in c or 'cost' in c or 'value' in c) and not mapping.get('price'):
+            mapping['price'] = col
+        elif ('symbol' in c or 'ticker' in c or 'security' in c or 'instrument' in c) and not mapping.get('symbol'):
+            mapping['symbol'] = col
+        elif 'curr' in c and not mapping.get('currency'):
+            mapping['currency'] = col
+    return mapping
+
 
 def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
     """

@@ -73,6 +73,8 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
 
         return {"status": "success", "message": f"Processed {len(transactions_data)} transactions"}
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
@@ -133,6 +135,8 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
 
         return {"status": "success", "message": f"Processed {len(transactions_data)} transactions"}
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
