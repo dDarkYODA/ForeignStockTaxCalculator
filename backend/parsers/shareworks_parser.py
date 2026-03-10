@@ -37,9 +37,9 @@ def parse_shareworks(df: pd.DataFrame) -> list:
             type_str = str(row[type_col]).upper()
             if 'VEST' in type_str or 'RSU' in type_str:
                 tx_type = TransactionType.RSU_VEST
-            elif 'PURCHASE' in type_str or 'ESPP' in type_str or 'OPTION' in type_str:
+            elif 'PURCHASE' in type_str:
                 tx_type = TransactionType.ESPP_PURCHASE
-            elif 'SELL' in type_str or 'SALE' in type_str or 'CORRECTION' in type_str:
+            elif 'SELL' in type_str or 'SALE' in type_str:
                 tx_type = TransactionType.SELL
             elif 'BUY' in type_str:
                 tx_type = TransactionType.BUY

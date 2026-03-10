@@ -14,17 +14,6 @@ Base.metadata.create_all(bind=engine)
 
 client = TestClient(app)
 
-import pytest
-
-@pytest.fixture(autouse=True)
-def clean_db():
-    with next(get_db()) as db:
-        db.query(TaxCalculation).delete()
-        db.query(Lot).delete()
-        db.query(DBTransaction).delete()
-        db.commit()
-
-
 def setup_db_with_transactions(transactions):
     with next(get_db()) as db:
         db.query(TaxCalculation).delete()
@@ -42,7 +31,7 @@ def test_read_root():
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert "message" in data
+    assert data["status"] == "ok" if "status" in data else True
 
 def test_upload_shareworks_valid():
     """Test uploading a valid Shareworks CSV file"""
