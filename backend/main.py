@@ -30,15 +30,15 @@ trace_provider = TracerProvider(resource=resource)
 trace_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
 trace.set_tracer_provider(trace_provider)
 
-# Instrument libraries
-FastAPIInstrumentor().instrument()
-SQLAlchemyInstrumentor().instrument()
-RequestsInstrumentor().instrument()
-
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Foreign Stock Tax Calculator API")
+
+# Instrument libraries
+FastAPIInstrumentor().instrument(app=app)
+SQLAlchemyInstrumentor().instrument(engine=engine)
+RequestsInstrumentor().instrument()
 
 # Configure CORS for frontend
 app.add_middleware(
