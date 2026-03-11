@@ -1,7 +1,6 @@
 import pandas as pd
-from backend.models.schema import TransactionType
-import math
 from datetime import datetime
+import pandas as pd
 from backend.models.schema import TransactionType
 
 def parse_fidelity(df: pd.DataFrame) -> list:
@@ -41,14 +40,12 @@ def parse_fidelity(df: pd.DataFrame) -> list:
                 tx_type = TransactionType.BUY
             elif 'VEST' in action_str:
                 tx_type = TransactionType.RSU_VEST
-            elif 'PURCHASE' in action_str or 'BUY' in action_str or 'REINVESTMENT' in action_str:
+            elif 'PURCHASE' in action_str or 'BUY' in action_str:
                 tx_type = TransactionType.BUY
-            elif 'DIVIDEND REINVESTMENT' in action_str:
-                tx_type = TransactionType.BUY
-            elif 'SELL' in action_str or 'SALE' in action_str or 'ADJUSTMENT' in action_str:
+            elif 'SELL' in action_str or 'SALE' in action_str:
                 tx_type = TransactionType.SELL
             else:
-                continue # Skip unknown types
+                continue # Skip unknown types like ADJUSTMENT
 
             if pd.isna(row[qty_col]) or pd.isna(row[price_col]) or pd.isna(row[security_col]):
                 continue

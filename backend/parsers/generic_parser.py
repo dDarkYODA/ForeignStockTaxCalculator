@@ -96,10 +96,18 @@ def _heuristic_fallback(header_row):
             break
 
     # Currency
+    # First pass: look for exact matches
     for k, v in lower_headers.items():
-        if 'currency' in k or 'curr' in k or 'unit' in k:
+        if k == 'currency' or k == 'curr' or k == 'unit':
             mapping['currency'] = v
             break
+
+    # Second pass: look for substrings if exact match not found
+    if 'currency' not in mapping:
+        for k, v in lower_headers.items():
+            if 'currency' in k or ' curr' in k or ' unit' in k:
+                mapping['currency'] = v
+                break
 
     return mapping
 

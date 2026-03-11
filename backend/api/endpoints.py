@@ -30,12 +30,13 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
     filename = file.filename
 
     try:
-        if filename.endswith('.csv'):
+        filename_lower = filename.strip().lower()
+        if filename_lower.endswith('.csv'):
             try:
                 df = pd.read_csv(io.BytesIO(content))
             except Exception:
                 raise HTTPException(status_code=400, detail="Invalid CSV format") from None
-        elif filename.endswith('.xlsx') or filename.endswith('.xls'):
+        elif filename_lower.endswith('.xlsx') or filename_lower.endswith('.xls'):
             try:
                 df = pd.read_excel(io.BytesIO(content))
             except Exception:

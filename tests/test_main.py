@@ -12,8 +12,9 @@ from backend.models.database import get_db, Base
 from backend.models.schema import Transaction as DBTransaction, Lot, TaxCalculation
 from backend.services.tax_engine import process_transactions
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+from sqlalchemy.pool import StaticPool
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="function")
@@ -72,9 +73,6 @@ def test_upload_shareworks_valid(client):
         response_data = response.json()
         assert response_data['status'] == 'success'
         transactions = client.get('/api/transactions').json()
-        response_data = response.json()
-        assert response_data['status'] == 'success'
-        transactions = client.get('/api/transactions').json()
         assert len(transactions) == 2
         assert transactions[0]['symbol'] == 'GOOGL'
         assert transactions[0]['broker'] == 'Shareworks'
@@ -98,9 +96,6 @@ def test_upload_fidelity_valid(client):
             )
 
         assert response.status_code == 200
-        response_data = response.json()
-        assert response_data['status'] == 'success'
-        transactions = client.get('/api/transactions').json()
         response_data = response.json()
         assert response_data['status'] == 'success'
         transactions = client.get('/api/transactions').json()
@@ -240,9 +235,6 @@ def test_upload_empty_csv(client):
             )
 
         assert response.status_code == 200
-        response_data = response.json()
-        assert response_data['status'] == 'success'
-        transactions = client.get('/api/transactions').json()
         response_data = response.json()
         assert response_data['status'] == 'success'
         transactions = client.get('/api/transactions').json()

@@ -114,7 +114,8 @@ def test_parse_without_mapping_infers_schema():
             del os.environ['OPENAI_API_KEY']
 
         df = pd.read_csv(temp_file)
-        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['symbol'] == 'NFLX'
@@ -138,7 +139,8 @@ def test_parse_handles_invalid_numeric_values():
 
     try:
         df = pd.read_csv(temp_file)
-        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         # Should only parse the 2 valid rows
         assert len(transactions) == 2
@@ -161,7 +163,7 @@ def test_parse_handles_missing_columns():
         schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
         try:
             transactions = parse(df, mapping=schema)
-            assert False, "Expected ValueError"
+            import pytest; pytest.fail("Expected ValueError")
         except ValueError as e:
             assert "Missing required standard names in mapping" in str(e)
     finally:
@@ -179,7 +181,8 @@ def test_parse_sets_default_broker():
 
     try:
         df = pd.read_csv(temp_file)
-        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['broker'] == 'Generic'
@@ -197,7 +200,8 @@ def test_parse_handles_empty_file():
 
     try:
         df = pd.read_csv(temp_file)
-        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
         assert len(transactions) == 0
     finally:
         os.unlink(temp_file)
@@ -240,7 +244,8 @@ def test_parse_with_cost_basis_column():
             del os.environ['OPENAI_API_KEY']
 
         df = pd.read_csv(temp_file)
-        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         # Cost Basis should map to price
@@ -261,7 +266,8 @@ def test_parse_defaults_to_usd_currency():
 
     try:
         df = pd.read_csv(temp_file)
-        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['currency'] == 'USD'
@@ -280,7 +286,8 @@ def test_parse_handles_zero_values():
 
     try:
         df = pd.read_csv(temp_file)
-        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records")); transactions = parse(df, mapping=schema)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         # Should parse rows even with zero values
         assert len(transactions) == 2
