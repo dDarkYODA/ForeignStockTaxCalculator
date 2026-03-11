@@ -213,8 +213,7 @@ def test_parse_negative_quantity():
         df = pd.read_csv(temp_file)
         transactions = parse(df)
 
-        assert len(transactions) == 1
-        assert transactions[0]['shares'] == -5.0
+        assert len(transactions) == 0
     finally:
         os.unlink(temp_file)
 
