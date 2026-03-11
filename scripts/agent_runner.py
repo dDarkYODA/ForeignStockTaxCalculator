@@ -18,9 +18,14 @@ def main():
     repo_name = os.getenv("GITHUB_REPOSITORY")
     event_path = os.getenv("GITHUB_EVENT_PATH")
 
-    if not all([github_token, openai_api_key, repo_name, event_path]):
-        print("Missing environment variables.")
+    if not all([github_token, repo_name, event_path]):
+        print("Missing GITHUB_TOKEN, GITHUB_REPOSITORY, or GITHUB_EVENT_PATH.")
         sys.exit(1)
+
+    if not openai_api_key:
+        print("Warning: OPENAI_API_KEY is not set. AI Agent Loop cannot run.")
+        print("Please configure OPENAI_API_KEY in your repository secrets to enable auto-fixes.")
+        sys.exit(0)
 
     g = Github(github_token)
     repo = g.get_repo(repo_name)
@@ -35,10 +40,6 @@ def main():
         pr_number = event_data["pull_request"].get("number")
     elif "issue" in event_data:
         pr_number = event_data["issue"].get("number")
-    elif "review" in event_data:
-        # Some review events have a pull_request nested in the review object, but it's not standard
-        # GitHub action context typically has pull_request at the root for PR events
-        pass
 
     if not pr_number:
         print(f"Could not find PR number in event: {event_data.keys()}")
@@ -58,7 +59,6 @@ def main():
 
     if not cr_comments:
         print("No CodeRabbit comments found.")
-        # We might still want to run the other agents, but the instructions focus on CodeRabbit comments
 
     # 2. Group by file
     files_to_fix = {}
@@ -69,7 +69,6 @@ def main():
 
     if not files_to_fix:
         print("No unresolved CodeRabbit comments to process.")
-        # Skip fix step but proceed to test/arch if necessary
     else:
         # 3. Load agent instructions
         with open(".ai/review-fix-agent.md", "r") as f:
@@ -127,12 +126,9 @@ def main():
     with open(".ai/test-agent.md", "r") as f:
         test_instructions = f.read()
 
-    # (In a real implementation, we would analyze the PR diff and generate relevant tests)
-    # For now, we'll run existing tests as a basic verification
     stdout, code = run_command("cd backend && pytest ../tests")
     if code != 0:
         print(f"Tests failed after fixes:\n{stdout}")
-        # Could trigger another fix cycle here
 
     # 6. Verify and commit
     run_command("git config user.name 'github-actions[bot]'")
