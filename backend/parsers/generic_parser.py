@@ -4,11 +4,7 @@ import os
 from openai import OpenAI
 from backend.models.schema import TransactionType
 
-def infer_schema_with_ai(header_row, sample_rows=None):
-    if isinstance(header_row, str) and sample_rows is None:
-        df = pd.read_csv(header_row)
-        header_row = list(df.columns)
-        sample_rows = df.head(20).to_dict(orient="records")
+def infer_schema_with_ai(header_row, sample_rows):
     """
     Sends the header row and first 20 rows to an AI model
     to infer column mappings.
@@ -64,11 +60,7 @@ def infer_schema_with_ai(header_row, sample_rows=None):
         print(f"Error calling AI: {e}")
         return {}
 
-def parse_generic_with_mapping(df, mapping=None) -> list:
-    if isinstance(df, str):
-        df = pd.read_csv(df)
-    if mapping is None:
-        mapping = infer_schema_with_ai(list(df.columns), df.head(20).to_dict(orient="records"))
+def parse_generic_with_mapping(df: pd.DataFrame, mapping: dict) -> list:
     """
     Parses a dataframe using a provided column mapping.
     """

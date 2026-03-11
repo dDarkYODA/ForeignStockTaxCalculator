@@ -75,8 +75,6 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
 
     except HTTPException:
         raise
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         print(f"Error processing upload: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -137,8 +135,6 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
 
     except HTTPException:
         raise
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         print(f"Error processing upload: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

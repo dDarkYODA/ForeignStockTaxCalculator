@@ -1,11 +1,8 @@
 import pandas as pd
 from datetime import datetime
 from backend.models.schema import TransactionType
-import io
 
-def parse_shareworks(df) -> list:
-    if isinstance(df, str):
-        df = pd.read_csv(df)
+def parse_shareworks(df: pd.DataFrame) -> list:
     transactions = []
 
     # Typical mappings for Morgan Stanley Shareworks
