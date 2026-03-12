@@ -7,17 +7,25 @@ on:
     types: [submitted]
   pull_request_review_comment:
     types: [created]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  deployment_status:
 
 jobs:
   ai-autofix:
     if: |
       (github.event_name == 'pull_request_review' && contains(github.event.review.user.login, 'coderabbit')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.user.login, 'coderabbit')) ||
-      (github.event_name == 'pull_request')
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure') ||
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'failure')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+      actions: read
+      deployments: read
 
     steps:
       - name: Checkout Code
@@ -41,5 +49,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
           python scripts/agent_runner.py
