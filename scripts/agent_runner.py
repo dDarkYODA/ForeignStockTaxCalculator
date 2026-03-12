@@ -2,15 +2,50 @@ import os
 import sys
 import subprocess
 import json
+import time
+import logging
 from github import Github
-from openai import OpenAI
+from openai import OpenAI, APIError, RateLimitError
 
-def run_command(command, cwd=None):
-    print(f"Running: {command}")
-    result = subprocess.run(command, shell=True, capture_output=True, text=True, cwd=cwd)
-    if result.returncode != 0:
-        print(f"Error: {result.stderr}")
-    return result.stdout, result.returncode
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def run_command(cmd, cwd=None):
+    logger.info(f"Running: {' '.join(cmd)}")
+    try:
+        # Use shell=False to avoid shell injection
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, shell=False)
+        if result.returncode != 0:
+            logger.error(f"Command failed with exit code {result.returncode}")
+            logger.error(f"Error output: {result.stderr}")
+        return result.stdout, result.returncode
+    except Exception as e:
+        logger.error(f"Exception running command {' '.join(cmd)}: {e}")
+        return "", 1
+
+def call_openai_with_retry(client, model, messages, max_retries=3):
+    for i in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages
+            )
+            return response.choices[0].message.content.strip()
+        except RateLimitError as e:
+            if i < max_retries - 1:
+                wait_time = (2 ** i) + 5
+                logger.warning(f"Rate limit hit, retrying in {wait_time}s... ({e})")
+                time.sleep(wait_time)
+            else:
+                logger.error("Rate limit hit, max retries reached.")
+                raise
+        except APIError as e:
+            logger.error(f"OpenAI API error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error calling OpenAI: {e}")
+            raise
 
 def main():
     github_token = os.getenv("GITHUB_TOKEN")
@@ -19,20 +54,24 @@ def main():
     event_path = os.getenv("GITHUB_EVENT_PATH")
 
     if not all([github_token, repo_name, event_path]):
-        print("Missing GITHUB_TOKEN, GITHUB_REPOSITORY, or GITHUB_EVENT_PATH.")
+        logger.error("Missing GITHUB_TOKEN, GITHUB_REPOSITORY, or GITHUB_EVENT_PATH.")
         sys.exit(1)
 
     if not openai_api_key:
-        print("Warning: OPENAI_API_KEY is not set. AI Agent Loop cannot run.")
-        print("Please configure OPENAI_API_KEY in your repository secrets to enable auto-fixes.")
+        logger.warning("OPENAI_API_KEY is not set. AI Agent Loop cannot run.")
+        logger.info("Please configure OPENAI_API_KEY in your repository secrets to enable auto-fixes.")
         sys.exit(0)
+
+    try:
+        with open(event_path, 'r') as f:
+            event_data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to read or parse event file at {event_path}: {e}")
+        sys.exit(1)
 
     g = Github(github_token)
     repo = g.get_repo(repo_name)
     client = OpenAI(api_key=openai_api_key)
-
-    with open(event_path, 'r') as f:
-        event_data = json.load(f)
 
     # Try different event structures for the PR number
     pr_number = None
@@ -42,23 +81,22 @@ def main():
         pr_number = event_data["issue"].get("number")
 
     if not pr_number:
-        print(f"Could not find PR number in event: {event_data.keys()}")
-        # Fallback for manual trigger or if the event structure is different
+        logger.info(f"Could not find PR number in event: {event_data.keys()}")
         pr_number = os.getenv("PR_NUMBER")
 
     if not pr_number:
-        print("Could not find PR number. Exiting.")
+        logger.info("Could not find PR number. Exiting.")
         sys.exit(0)
 
     pr = repo.get_pull(int(pr_number))
-    print(f"Processing PR #{pr_number}: {pr.title}")
+    logger.info(f"Processing PR #{pr_number}: {pr.title}")
 
     # 1. Fetch CodeRabbit comments
     comments = list(pr.get_review_comments())
     cr_comments = [c for c in comments if "coderabbit" in c.user.login.lower()]
 
     if not cr_comments:
-        print("No CodeRabbit comments found.")
+        logger.info("No CodeRabbit comments found.")
 
     # 2. Group by file
     files_to_fix = {}
@@ -67,25 +105,32 @@ def main():
             files_to_fix[comment.path] = []
         files_to_fix[comment.path].append(comment.body)
 
+    modified_files = []
+
     if not files_to_fix:
-        print("No unresolved CodeRabbit comments to process.")
+        logger.info("No unresolved CodeRabbit comments to process.")
     else:
         # 3. Load agent instructions
-        with open(".ai/review-fix-agent.md", "r") as f:
-            review_fix_instructions = f.read()
-        with open(".ai/architecture-agent.md", "r") as f:
-            arch_instructions = f.read()
+        try:
+            with open(".ai/review-fix-agent.md", "r") as f:
+                review_fix_instructions = f.read()
+            with open(".ai/architecture-agent.md", "r") as f:
+                arch_instructions = f.read()
+        except FileNotFoundError as e:
+            logger.error(f"Required agent instruction file not found: {e}")
+            sys.exit(1)
 
         # 4. Apply fixes
         for path, comment_list in files_to_fix.items():
-            if not os.path.exists(path):
-                print(f"File {path} not found locally. Skipping.")
+            full_path = os.path.join(os.getcwd(), path)
+            if not os.path.exists(full_path):
+                logger.warning(f"File {path} not found locally. Skipping.")
                 continue
 
-            with open(path, "r") as f:
+            with open(full_path, "r") as f:
                 content = f.read()
 
-            print(f"Fixing {path}...")
+            logger.info(f"Fixing {path}...")
 
             prompt = f"""
             Instructions: {review_fix_instructions}
@@ -103,48 +148,69 @@ def main():
             Return ONLY the FULL updated file content. Do not include any other text, explanations or markdown wrappers.
             """
 
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}]
-            )
+            try:
+                new_content = call_openai_with_retry(client, "gpt-4o", [{"role": "user", "content": prompt}])
 
-            new_content = response.choices[0].message.content.strip()
-            # Clean up potential markdown formatting
-            if new_content.startswith("```"):
-                lines = new_content.splitlines()
-                if lines[0].startswith("```"):
-                    lines = lines[1:]
-                if lines[-1].startswith("```"):
-                    lines = lines[:-1]
-                new_content = "\n".join(lines)
+                # Clean up potential markdown formatting
+                if new_content.startswith("```"):
+                    lines = new_content.splitlines()
+                    if lines and lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    new_content = "\n".join(lines)
 
-            with open(path, "w") as f:
-                f.write(new_content)
+                with open(full_path, "w") as f:
+                    f.write(new_content)
+                modified_files.append(path)
+            except Exception as e:
+                logger.error(f"Failed to fix {path}: {e}")
 
-    # 5. Add tests
-    print("Running test agent...")
-    with open(".ai/test-agent.md", "r") as f:
-        test_instructions = f.read()
+    # 5. Add tests / Verify
+    logger.info("Running verification/tests...")
+    # In a real implementation, we would use test_instructions to guide test generation/execution.
+    # For now, we use them as a sanity check and ensure we fail the CI on test failure.
+    try:
+        with open(".ai/test-agent.md", "r") as f:
+            test_instructions = f.read()
+    except FileNotFoundError:
+        logger.warning(".ai/test-agent.md not found.")
 
-    stdout, code = run_command("cd backend && pytest ../tests")
+    # We use a custom command that handles the directory change safely
+    # Note: PYTHONPATH is important here.
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.getcwd()
+
+    # Run tests from project root
+    stdout, code = run_command(["python3", "-m", "pytest", "tests/"])
     if code != 0:
-        print(f"Tests failed after fixes:\n{stdout}")
+        logger.error(f"Tests failed after fixes. Halting.\n{stdout}")
+        sys.exit(code)
 
     # 6. Verify and commit
-    run_command("git config user.name 'github-actions[bot]'")
-    run_command("git config user.email 'github-actions[bot]@users.noreply.github.com'")
-    run_command("git add .")
-
-    # Check if there are changes to commit
-    diff_check, _ = run_command("git diff --staged")
-    if not diff_check.strip():
-        print("No changes to commit.")
+    if not modified_files:
+        logger.info("No changes to commit.")
         return
 
-    run_command("git commit -m 'AI: Auto-fix CodeRabbit comments and improve architecture'")
-    run_command(f"git push origin HEAD:{pr.head.ref}")
+    run_command(["git", "config", "user.name", "github-actions[bot]"])
+    run_command(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"])
 
-    print("Fixes applied and pushed.")
+    # Explicitly add only the modified files to avoid staging unwanted artifacts
+    for f in modified_files:
+        run_command(["git", "add", f])
+
+    # Check if there are changes to commit
+    diff_check, _ = run_command(["git", "diff", "--staged"])
+    if not diff_check.strip():
+        logger.info("No changes in index after adding modified files.")
+        return
+
+    run_command(["git", "commit", "-m", "AI: Auto-fix CodeRabbit comments and improve architecture"])
+
+    # Secure push using list args to avoid shell injection
+    run_command(["git", "push", "origin", f"HEAD:{pr.head.ref}"])
+
+    logger.info("Fixes applied and pushed successfully.")
 
 if __name__ == "__main__":
     main()
