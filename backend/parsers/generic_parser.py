@@ -58,11 +58,63 @@ def infer_schema_with_ai(header_row, sample_rows=None):
                 response_format={ "type": "json_object" }
             )
             return json.loads(response.choices[0].message.content)
+
         else:
-            return {}
+            return _heuristic_fallback(header_row)
     except Exception as e:
         print(f"Error calling AI: {e}")
-        return {}
+        return _heuristic_fallback(header_row)
+
+def _heuristic_fallback(header_row):
+    mapping = {}
+    lower_headers = {str(h).lower(): h for h in header_row}
+
+    # Date
+    for k, v in lower_headers.items():
+        if 'date' in k:
+            mapping['date'] = v
+            break
+
+    # Transaction Type
+    for k, v in lower_headers.items():
+        if 'type' in k or 'action' in k or 'plan' in k:
+            mapping['transaction_type'] = v
+            break
+
+    # Symbol
+    for k, v in lower_headers.items():
+        if 'symbol' in k or 'ticker' in k or 'instrument' in k or 'stock' in k or 'security' in k:
+            mapping['symbol'] = v
+            break
+
+    # Shares
+    for k, v in lower_headers.items():
+        if 'share' in k or 'amount' in k or 'quantity' in k:
+            mapping['shares'] = v
+            break
+
+    # Price
+    for k, v in lower_headers.items():
+        if 'price' in k or 'value' in k or 'cost' in k:
+            mapping['price'] = v
+            break
+
+    # Currency
+    # First pass: look for exact matches
+    for k, v in lower_headers.items():
+        if k == 'currency' or k == 'curr' or k == 'unit':
+            mapping['currency'] = v
+            break
+
+    # Second pass: look for substrings if exact match not found
+    if 'currency' not in mapping:
+        for k, v in lower_headers.items():
+            if 'currency' in k or ' curr' in k or ' unit' in k:
+                mapping['currency'] = v
+                break
+
+    return mapping
+
 
 def parse_generic_with_mapping(df, mapping=None) -> list:
     if isinstance(df, str):
@@ -75,9 +127,6 @@ def parse_generic_with_mapping(df, mapping=None) -> list:
     transactions = []
     
     cols = list(df.columns)
-    for key, val in mapping.items():
-        if val and val not in cols:
-            print(f"Warning: Fallback default '{val}' for standard name '{key}' is missing in the CSV columns.")
 
     date_col = mapping.get('date')
     type_col = mapping.get('transaction_type')
@@ -86,13 +135,19 @@ def parse_generic_with_mapping(df, mapping=None) -> list:
     symbol_col = mapping.get('symbol')
     currency_col = mapping.get('currency')
 
-    # Require minimum fields
-    if not all([date_col, type_col, shares_col, price_col, symbol_col]):
-        raise ValueError("Missing required fields in mapping")
+    missing_keys = []
+    for key in ['date', 'transaction_type', 'shares', 'price', 'symbol']:
+        if not mapping.get(key):
+            missing_keys.append(key)
+    if missing_keys:
+        raise ValueError(f"Missing required standard names in mapping: {', '.join(missing_keys)}")
 
-    for col in [date_col, type_col, shares_col, price_col, symbol_col]:
-        if col not in df.columns:
-            raise ValueError(f"Mapped column '{col}' not found in data")
+    missing_cols = []
+    for key, val in mapping.items():
+        if val and val not in cols:
+            missing_cols.append(f"'{val}' (for '{key}')")
+    if missing_cols:
+        raise ValueError(f"Fallback defaults missing in CSV columns: {', '.join(missing_cols)}")
 
     for index, row in df.iterrows():
         try:

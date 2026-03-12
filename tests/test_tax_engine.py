@@ -11,7 +11,7 @@ def calculate_gains(transactions):
     db = Session()
     for t in transactions:
         from backend.models.schema import Transaction as DBTransaction
-        db.add(DBTransaction(**t.dict(), user_id="test"))
+        db.add(DBTransaction(**t.model_dump(), user_id="test"))
     db.commit()
     process_transactions(db, "test")
     from backend.models.schema import TaxCalculation

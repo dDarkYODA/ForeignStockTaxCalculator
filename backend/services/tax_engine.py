@@ -33,6 +33,7 @@ def process_transactions(db: Session, user_id: str):
                 currency=txn.currency
             )
             db.add(lot)
+            db.flush()
 
         elif txn.transaction_type == TransactionType.SELL:
             # Match against lots and calculate tax

@@ -6,6 +6,7 @@ infer_schema = infer_schema_with_ai
 import tempfile
 import csv
 import os
+import pandas as pd
 
 
 def test_infer_schema_fallback_basic():
@@ -24,6 +25,13 @@ def test_infer_schema_fallback_basic():
 
         df = pd.read_csv(temp_file)
         schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+
+        assert 'date' in schema
+        assert 'transaction_type' in schema
+        assert 'symbol' in schema
+        assert 'shares' in schema
+        assert 'price' in schema
+        assert 'currency' in schema
 
         assert isinstance(schema, dict)
         # Check that it correctly mapped the columns
@@ -80,13 +88,13 @@ def test_parse_with_custom_mapping():
         }
 
         df = pd.read_csv(temp_file)
-        transactions = parse(df, mapping)
+        transactions = parse(df, mapping=mapping)
 
         assert len(transactions) == 2
         assert transactions[0]['symbol'] == 'MSFT'
         assert transactions[0]['shares'] == 15.0
         assert transactions[0]['price'] == 280.0
-        assert transactions[1]['transaction_type'] == TransactionType.SELL
+        assert transactions[1]['transaction_type'].value == 'SELL'
     finally:
         os.unlink(temp_file)
 
@@ -105,15 +113,8 @@ def test_parse_without_mapping_infers_schema():
             del os.environ['OPENAI_API_KEY']
 
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
-        transactions = parse(df, mapping)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['symbol'] == 'NFLX'
@@ -137,15 +138,8 @@ def test_parse_handles_invalid_numeric_values():
 
     try:
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
-        transactions = parse(df, mapping)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         # Should only parse the 2 valid rows
         assert len(transactions) == 2
@@ -164,26 +158,16 @@ def test_parse_handles_missing_columns():
         temp_file = f.name
 
     try:
-        # Should use fallback mapping and handle missing values
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
         try:
-            transactions = parse(df, mapping)
-        except ValueError:
-            transactions = []
-
-        # Rows without required fields should be skipped or handled with defaults
-        # Based on the code, it will skip rows where shares_key or price_key don't exist
-        assert len(transactions) == 0
+            transactions = parse(df, mapping=schema)
+            import pytest; pytest.fail("Expected ValueError")
+        except ValueError as e:
+            assert "Missing required standard names in mapping" in str(e)
     finally:
         os.unlink(temp_file)
+
 
 
 def test_parse_sets_default_broker():
@@ -196,15 +180,8 @@ def test_parse_sets_default_broker():
 
     try:
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
-        transactions = parse(df, mapping)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['broker'] == 'Generic'
@@ -222,15 +199,8 @@ def test_parse_handles_empty_file():
 
     try:
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
-        transactions = parse(df, mapping)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
         assert len(transactions) == 0
     finally:
         os.unlink(temp_file)
@@ -272,15 +242,8 @@ def test_parse_with_cost_basis_column():
             del os.environ['OPENAI_API_KEY']
 
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
-        transactions = parse(df, mapping)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         # Cost Basis should map to price
@@ -301,15 +264,8 @@ def test_parse_defaults_to_usd_currency():
 
     try:
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
-        transactions = parse(df, mapping)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         assert len(transactions) == 1
         assert transactions[0]['currency'] == 'USD'
@@ -328,15 +284,8 @@ def test_parse_handles_zero_values():
 
     try:
         df = pd.read_csv(temp_file)
-        mapping = {
-            'date': next((c for c in df.columns if 'date' in c.lower()), None),
-            'transaction_type': next((c for c in df.columns if 'action' in c.lower() or 'type' in c.lower()), None),
-            'symbol': next((c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower() or 'security' in c.lower() or 'instrument' in c.lower() or 'stock' in c.lower()), None),
-            'shares': next((c for c in df.columns if 'share' in c.lower() or 'quantity' in c.lower() or 'amount' in c.lower()), None),
-            'price': next((c for c in df.columns if 'price' in c.lower() or 'value' in c.lower() or 'cost' in c.lower()), None),
-            'currency': next((c for c in df.columns if 'curr' in c.lower()), None)
-        }
-        transactions = parse(df, mapping)
+        schema = infer_schema(list(df.columns), df.head(20).to_dict(orient="records"))
+        transactions = parse(df, mapping=schema)
 
         # Should parse rows even with zero values
         assert len(transactions) == 2
