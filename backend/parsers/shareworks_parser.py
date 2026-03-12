@@ -42,8 +42,10 @@ def parse_shareworks(df) -> list:
                 tx_type = TransactionType.SELL
             elif 'VEST' in type_str or 'RSU' in type_str:
                 tx_type = TransactionType.RSU_VEST
-            elif 'PURCHASE' in type_str or 'ESPP' in type_str or 'OPTION' in type_str:
+            elif 'PURCHASE' in type_str or 'ESPP' in type_str:
                 tx_type = TransactionType.ESPP_PURCHASE
+            elif 'OPTION' in type_str:
+                tx_type = TransactionType.OPTION_EXERCISE
             elif 'BUY' in type_str:
                 tx_type = TransactionType.BUY
             else:

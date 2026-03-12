@@ -100,7 +100,8 @@ def test_parse_different_plan_types():
         assert len(transactions) == 4
         plan_types = [t['transaction_type'].value for t in transactions]
         assert plan_types.count('RSU_VEST') == 1
-        assert plan_types.count('ESPP_PURCHASE') == 2
+        assert plan_types.count('ESPP_PURCHASE') == 1
+        assert plan_types.count('OPTION_EXERCISE') == 1
         assert plan_types.count('SELL') == 1
     finally:
         os.unlink(temp_file)
