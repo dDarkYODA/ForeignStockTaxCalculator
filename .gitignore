@@ -23,3 +23,5 @@ build/
 # Temporary files
 /tmp/*
 *.log
+sql_app.db
+backend/test.db

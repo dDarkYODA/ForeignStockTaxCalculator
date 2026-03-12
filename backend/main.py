@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.endpoints import router
 from backend.models.database import engine, Base
+from sqlalchemy import inspect, text
 
 # Configure OpenTelemetry
 from opentelemetry import trace
@@ -37,6 +38,20 @@ RequestsInstrumentor().instrument()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Handle schema migrations for existing databases
+def run_migrations():
+    inspector = inspect(engine)
+    if 'lots' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('lots')]
+        if 'currency' not in columns:
+            print("Adding 'currency' column to 'lots' table...")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE lots ADD COLUMN currency VARCHAR"))
+                conn.commit()
+            print("Column 'currency' added successfully.")
+
+run_migrations()
 
 app = FastAPI(title="Foreign Stock Tax Calculator API")
 
