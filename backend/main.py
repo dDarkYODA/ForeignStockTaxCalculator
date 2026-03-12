@@ -60,6 +60,7 @@ def run_migrations():
                 except Exception as e:
                     print(f"Enum modification error: {e}")
                     conn.rollback()
+                    raise
             elif engine.dialect.name == 'sqlite':
                 try:
                     # Attempt to recreate the CHECK constraint for SQLite if possible
