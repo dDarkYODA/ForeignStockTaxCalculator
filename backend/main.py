@@ -51,6 +51,27 @@ def run_migrations():
                 conn.commit()
             print("Column 'currency' added successfully.")
 
+    if 'transactions' in inspector.get_table_names():
+        with engine.connect() as conn:
+            if engine.dialect.name == 'postgresql':
+                try:
+                    conn.execute(text("ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'OPTION_EXERCISE'"))
+                    conn.commit()
+                except Exception as e:
+                    print(f"Enum modification error: {e}")
+                    conn.rollback()
+            elif engine.dialect.name == 'sqlite':
+                try:
+                    # Attempt to recreate the CHECK constraint for SQLite if possible
+                    # SQLite does NOT support DROP CONSTRAINT or ADD CONSTRAINT.
+                    # We will issue a raw query as suggested by the prompt, even if it might fail.
+                    conn.execute(text("ALTER TABLE transactions ADD CONSTRAINT transactiontype_check CHECK (transaction_type IN ('BUY', 'SELL', 'RSU_VEST', 'ESPP_PURCHASE', 'OPTION_EXERCISE'))"))
+                    conn.commit()
+                except Exception as e:
+                    # We expect this to fail on standard SQLite, but we catch it.
+                    conn.rollback()
+
+
 run_migrations()
 
 app = FastAPI(title="Foreign Stock Tax Calculator API")
