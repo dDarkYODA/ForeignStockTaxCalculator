@@ -1,3 +1,5 @@
+from backend.models.schema import TransactionType
+import pandas as pd
 from backend.parsers.fidelity_parser import parse_fidelity
 parse = parse_fidelity
 from datetime import date

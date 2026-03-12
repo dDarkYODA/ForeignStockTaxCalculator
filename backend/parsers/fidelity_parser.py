@@ -3,7 +3,9 @@ from datetime import datetime
 import pandas as pd
 from backend.models.schema import TransactionType
 
-def parse_fidelity(df: pd.DataFrame) -> list:
+def parse_fidelity(df) -> list:
+    if isinstance(df, str):
+        df = pd.read_csv(df)
     transactions = []
 
     # Typical mappings for Fidelity

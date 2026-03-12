@@ -1,3 +1,5 @@
+from backend.models.schema import TransactionType
+import pandas as pd
 from backend.parsers.shareworks_parser import parse_shareworks
 parse = parse_shareworks
 from datetime import date
