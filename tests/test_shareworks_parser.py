@@ -98,9 +98,18 @@ def test_parse_different_plan_types():
         transactions = parse(df)
 
         assert len(transactions) == 4
+
+        # Verify specific transactions mapped correctly by date
+        option_tx = next(t for t in transactions if t['date'] == date(2023, 9, 20))
+        assert option_tx['transaction_type'].value == 'OPTION_EXERCISE'
+
+        espp_tx = next(t for t in transactions if t['date'] == date(2023, 9, 10))
+        assert espp_tx['transaction_type'].value == 'ESPP_PURCHASE'
+
         plan_types = [t['transaction_type'].value for t in transactions]
         assert plan_types.count('RSU_VEST') == 1
-        assert plan_types.count('ESPP_PURCHASE') == 2
+        assert plan_types.count('ESPP_PURCHASE') == 1
+        assert plan_types.count('OPTION_EXERCISE') == 1
         assert plan_types.count('SELL') == 1
     finally:
         os.unlink(temp_file)

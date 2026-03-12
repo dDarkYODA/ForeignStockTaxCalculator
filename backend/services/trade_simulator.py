@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import date
 from backend.models.schema import Lot
@@ -11,7 +12,7 @@ def simulate_trade(db: Session, user_id: str, symbol: str, shares: float, price:
     # Fetch available lots, order by date (FIFO)
     available_lots = db.query(Lot).filter(
         Lot.user_id == user_id,
-        Lot.symbol == symbol,
+        func.lower(Lot.symbol) == symbol.lower(),
         Lot.available_shares > 0
     ).order_by(Lot.date).all()
 

@@ -17,7 +17,7 @@ def process_transactions(db: Session, user_id: str):
     transactions = db.query(Transaction).filter(Transaction.user_id == user_id).order_by(Transaction.date).all()
 
     for txn in transactions:
-        if txn.transaction_type in [TransactionType.BUY, TransactionType.RSU_VEST, TransactionType.ESPP_PURCHASE]:
+        if txn.transaction_type in [TransactionType.BUY, TransactionType.RSU_VEST, TransactionType.ESPP_PURCHASE, TransactionType.OPTION_EXERCISE]:
             # Create a new lot
             fx_rate = fx_service.get_tt_buy_rate(txn.currency, txn.date)
             cost_inr = txn.shares * txn.price * fx_rate

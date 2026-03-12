@@ -8,6 +8,7 @@ class TransactionType(enum.Enum):
     SELL = "SELL"
     RSU_VEST = "RSU_VEST"
     ESPP_PURCHASE = "ESPP_PURCHASE"
+    OPTION_EXERCISE = "OPTION_EXERCISE"
 
 class Transaction(Base):
     __tablename__ = "transactions"
