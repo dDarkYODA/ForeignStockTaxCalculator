@@ -52,23 +52,22 @@ def run_migrations():
             print("Column 'currency' added successfully.")
 
     if 'transactions' in inspector.get_table_names():
-        with engine.connect() as conn:
-            if engine.dialect.name == 'postgresql':
+        if engine.dialect.name == 'postgresql':
+            with engine.execution_options(isolation_level="AUTOCOMMIT").connect() as conn:
                 try:
                     conn.execute(text("ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'OPTION_EXERCISE'"))
-                    conn.commit()
                 except Exception as e:
                     print(f"Enum modification error: {e}")
-                    conn.rollback()
                     raise
-            elif engine.dialect.name == 'sqlite':
+        elif engine.dialect.name == 'sqlite':
+            with engine.connect() as conn:
                 try:
                     # Attempt to recreate the CHECK constraint for SQLite if possible
                     # SQLite does NOT support DROP CONSTRAINT or ADD CONSTRAINT.
                     # We will issue a raw query as suggested by the prompt, even if it might fail.
                     conn.execute(text("ALTER TABLE transactions ADD CONSTRAINT transactiontype_check CHECK (transaction_type IN ('BUY', 'SELL', 'RSU_VEST', 'ESPP_PURCHASE', 'OPTION_EXERCISE'))"))
                     conn.commit()
-                except Exception as e:
+                except Exception:
                     # We expect this to fail on standard SQLite, but we catch it.
                     conn.rollback()
 

@@ -100,7 +100,6 @@ def test_parse_different_plan_types():
         assert len(transactions) == 4
 
         # Verify specific transactions mapped correctly by date
-        from datetime import date
         option_tx = next(t for t in transactions if t['date'] == date(2023, 9, 20))
         assert option_tx['transaction_type'].value == 'OPTION_EXERCISE'
 
