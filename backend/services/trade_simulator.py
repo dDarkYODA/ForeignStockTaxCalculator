@@ -38,7 +38,7 @@ def simulate_trade(db: Session, user_id: str, symbol: str, shares: float, price:
         if sale_date.day < lot.date.day:
             months_held -= 1
 
-        holding_type = "LTCG" if months_held >= 24 else "STCG"
+        holding_type = "LTCG" if months_held > 24 else "STCG"
 
         if holding_type == "LTCG":
             ltcg_gain_inr += lot_gain_inr

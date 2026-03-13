@@ -43,7 +43,7 @@ class Lot(Base):
             cls.user_id == user_id,
             func.lower(cls.symbol) == symbol_name.lower(),
             cls.available_shares > 0
-        ).order_by(cls.date).all()
+        ).order_by(cls.date, cls.id).all()
 
 class TaxCalculation(Base):
     __tablename__ = "tax_calculations"
