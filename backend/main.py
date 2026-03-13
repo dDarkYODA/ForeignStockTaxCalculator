@@ -42,6 +42,16 @@ Base.metadata.create_all(bind=engine)
 # Handle schema migrations for existing databases
 def run_migrations():
     inspector = inspect(engine)
+
+    if 'lots' in inspector.get_table_names():
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lot_symbol_lower_user ON lots (user_id, lower(symbol))"))
+                conn.commit()
+            print("Functional index 'idx_lot_symbol_lower_user' ensured.")
+        except Exception as e:
+            print(f"Error creating functional index: {e}")
+
     if 'lots' in inspector.get_table_names():
         columns = [col['name'] for col in inspector.get_columns('lots')]
         if 'currency' not in columns:
