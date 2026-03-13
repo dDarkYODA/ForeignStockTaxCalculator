@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Enum, Index, func
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
@@ -37,6 +37,14 @@ class Lot(Base):
     available_shares = Column(Float)
     currency = Column(String)
 
+    @classmethod
+    def get_available_lots(cls, db, user_id: str, symbol_name: str):
+        return db.query(cls).filter(
+            cls.user_id == user_id,
+            func.lower(cls.symbol) == symbol_name.lower(),
+            cls.available_shares > 0
+        ).order_by(cls.date).all()
+
 class TaxCalculation(Base):
     __tablename__ = "tax_calculations"
 
@@ -50,3 +58,5 @@ class TaxCalculation(Base):
     sale_inr = Column(Float)
     gain_inr = Column(Float)
     holding_type = Column(String) # STCG or LTCG
+
+Index('idx_lot_symbol_lower_user', Lot.user_id, func.lower(Lot.symbol))

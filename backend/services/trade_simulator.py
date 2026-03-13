@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from datetime import date
-from sqlalchemy import func
 from backend.models.schema import Lot
 from .fx_service import fx_service
 
@@ -10,11 +9,7 @@ def simulate_trade(db: Session, user_id: str, symbol: str, shares: float, price:
     Calculates cost basis using FIFO, and estimates capital gains tax.
     """
     # Fetch available lots, order by date (FIFO)
-    available_lots = db.query(Lot).filter(
-        Lot.user_id == user_id,
-        func.lower(Lot.symbol) == symbol.lower(),
-        Lot.available_shares > 0
-    ).order_by(Lot.date).all()
+    available_lots = Lot.get_available_lots(db, user_id, symbol)
 
     shares_remaining = shares
     cost_basis_inr = 0.0
