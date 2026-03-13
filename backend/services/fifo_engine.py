@@ -1,6 +1,7 @@
 from backend.models.schema import Lot
 from sqlalchemy.orm import Session
 from datetime import date
+from sqlalchemy import func
 from .fx_service import fx_service
 
 def match_sell_fifo(db: Session, user_id: str, symbol: str, shares_to_sell: float, sell_date: date, sell_price: float, sell_currency: str) -> list:
@@ -13,7 +14,7 @@ def match_sell_fifo(db: Session, user_id: str, symbol: str, shares_to_sell: floa
     # Get available lots for this symbol, ordered by date (FIFO)
     available_lots = db.query(Lot).filter(
         Lot.user_id == user_id,
-        Lot.symbol == symbol,
+        func.lower(Lot.symbol) == symbol.lower(),
         Lot.available_shares > 0
     ).order_by(Lot.date).all()
 
