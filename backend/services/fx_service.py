@@ -37,11 +37,13 @@ class FXService:
             return rate
 
         # Get base USD rate for the year
-        usd_rate = self.default_rate
-        if dt.year == 2021: usd_rate = 74.5
-        elif dt.year == 2022: usd_rate = 78.2
-        elif dt.year == 2023: usd_rate = 82.5
-        elif dt.year == 2024: usd_rate = 83.2
+        year_rates = {
+            2021: 74.5,
+            2022: 78.2,
+            2023: 82.5,
+            2024: 83.2
+        }
+        usd_rate = year_rates.get(dt.year, self.default_rate)
 
         multiplier = self.currency_multipliers.get(currency.upper(), 1.0)
         return usd_rate * multiplier
