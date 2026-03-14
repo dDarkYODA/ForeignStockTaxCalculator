@@ -55,7 +55,7 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
 
             import uuid
             import os
-            _, ext = os.path.splitext(filename)
+            _, ext = os.path.splitext(filename_lower)
             temp_filename = str(uuid.uuid4()) + ext
 
             # Save the file content temporarily for later confirmation
