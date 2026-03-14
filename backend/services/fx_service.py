@@ -11,7 +11,18 @@ class FXService:
             (date(2024, 2, 10), "USD"): 83.00,
             (date(2024, 5, 5), "USD"): 83.50,
         }
-        self.default_rate = 83.0  # fallback
+        self.default_rate = 83.0  # fallback for USD
+
+        # Multipliers relative to USD
+        self.currency_multipliers = {
+            "USD": 1.0,
+            "EUR": 1.08,
+            "GBP": 1.25,
+            "CHF": 1.12,
+            "CAD": 0.74,
+            "AUD": 0.65,
+            "JPY": 0.0067,
+        }
 
     def get_tt_buy_rate(self, currency: str, dt: date) -> float:
         """
@@ -25,12 +36,14 @@ class FXService:
         if rate is not None:
             return rate
 
-        # For dates not in mock cache, return a deterministic derived value based on year
-        if dt.year == 2021: return 74.5
-        if dt.year == 2022: return 78.2
-        if dt.year == 2023: return 82.5
-        if dt.year == 2024: return 83.2
+        # Get base USD rate for the year
+        usd_rate = self.default_rate
+        if dt.year == 2021: usd_rate = 74.5
+        elif dt.year == 2022: usd_rate = 78.2
+        elif dt.year == 2023: usd_rate = 82.5
+        elif dt.year == 2024: usd_rate = 83.2
 
-        return self.default_rate
+        multiplier = self.currency_multipliers.get(currency.upper(), 1.0)
+        return usd_rate * multiplier
 
 fx_service = FXService()
