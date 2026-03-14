@@ -24,6 +24,9 @@ resource = Resource.create({
 # Create OTLP exporter
 otlp_exporter = OTLPSpanExporter(
     endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://ingest.kubiks.app"),
+    headers={
+        "x-kubiks-key": os.getenv("OTEL_EXPORTER_OTLP_HEADERS", ""),
+    },
 )
 
 # Create tracer provider
