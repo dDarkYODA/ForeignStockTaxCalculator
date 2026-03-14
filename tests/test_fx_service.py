@@ -58,15 +58,15 @@ def test_get_tt_buy_rate_unknown_currency_default():
     # Currency not in cache
     rate = get_tt_buy_rate('EUR', date(2023, 1, 1))
 
-    # Should return year fallback (2023 = 82.5)
-    assert rate == 82.5
+    # Should return year fallback (2023 = 82.5) times EUR multiplier 1.08
+    assert rate == 82.5 * 1.08
 
 
 def test_get_tt_buy_rate_unknown_currency_various_dates():
     """Test unknown currency falls back to the rate for the requested year and case normalization applies"""
-    assert get_tt_buy_rate('GBP', date(2023, 1, 1)) == 82.5
-    assert get_tt_buy_rate('JPY', date(2024, 6, 15)) == 83.2
-    assert get_tt_buy_rate('CAD', date(2020, 12, 31)) == 83.0
+    assert get_tt_buy_rate('GBP', date(2023, 1, 1)) == 82.5 * 1.25
+    assert get_tt_buy_rate('JPY', date(2024, 6, 15)) == 83.2 * 0.0067
+    assert get_tt_buy_rate('CAD', date(2020, 12, 31)) == 83.0 * 0.74
 
 
 def test_get_tt_buy_rate_boundary_dates():
