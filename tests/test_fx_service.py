@@ -145,3 +145,11 @@ def test_get_tt_buy_rate_positive_values():
 
     for rate in rates:
         assert rate > 0
+
+def test_get_tt_buy_rate_missing_multiplier_fallback():
+    """Test currencies missing from currency_multipliers fallback to multiplier 1.0"""
+    # 2023 fallback is 82.5
+    assert get_tt_buy_rate('SGD', date(2023, 1, 1)) == 82.5
+
+    # 2024 fallback is 83.2, check lowercase
+    assert get_tt_buy_rate('xxx', date(2024, 1, 1)) == 83.2
