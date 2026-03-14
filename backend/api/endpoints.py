@@ -54,7 +54,9 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
             inferred_mapping = infer_schema_with_ai(header, sample)
 
             import uuid
-            temp_filename = str(uuid.uuid4())
+            import os
+            _, ext = os.path.splitext(filename)
+            temp_filename = str(uuid.uuid4()) + ext
 
             # Save the file content temporarily for later confirmation
             with open(f"/tmp/{temp_filename}", "wb") as f:
@@ -103,8 +105,9 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
 
         # Sanitize filename to strictly be a UUID to prevent path traversal
         try:
-            valid_uuid = uuid.UUID(filename)
-            safe_filename = str(valid_uuid)
+            base_name, ext = os.path.splitext(filename)
+            valid_uuid = uuid.UUID(base_name)
+            safe_filename = str(valid_uuid) + ext
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid filename format")
 
