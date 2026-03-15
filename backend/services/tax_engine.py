@@ -16,6 +16,7 @@ def process_transactions(db: Session, user_id: str):
     # 2. Get all transactions ordered by date
     transactions = db.query(Transaction).filter(Transaction.user_id == user_id).order_by(Transaction.date).all()
 
+    tax_calculations = []
     for txn in transactions:
         if txn.transaction_type in [TransactionType.BUY, TransactionType.RSU_VEST, TransactionType.ESPP_PURCHASE, TransactionType.OPTION_EXERCISE]:
             # Create a new lot
@@ -60,7 +61,10 @@ def process_transactions(db: Session, user_id: str):
                     gain_inr=result["gain_inr"],
                     holding_type=result["holding_type"]
                 )
-                db.add(tax_calc)
+                tax_calculations.append(tax_calc)
+
+    if tax_calculations:
+        db.add_all(tax_calculations)
 
     # Commit the entire batch
     db.commit()

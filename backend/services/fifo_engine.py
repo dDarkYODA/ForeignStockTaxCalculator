@@ -54,5 +54,4 @@ def match_sell_fifo(db: Session, user_id: str, symbol: str, shares_to_sell: floa
         lot.available_shares -= shares_matched
         db.add(lot)
 
-    db.commit()
     return results
