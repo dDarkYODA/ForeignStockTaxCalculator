@@ -21,3 +21,11 @@ def test_get_current_price_with_different_symbols():
 def test_get_current_price_manual_price_zero():
     """Test that get_current_price returns 0.0 if manual_price is explicitly 0.0"""
     assert price_service.get_current_price("AAPL", manual_price=0.0) == 0.0
+
+def test_get_current_price_with_explicit_none():
+    """
+    Test calling price_service.get_current_price with manual_price=None.
+    This mirrors the call path in portfolio_service.py where manual_prices.get(symbol)
+    is passed, which may return None if the symbol is not in the dictionary.
+    """
+    assert price_service.get_current_price("GOOGL", manual_price=None) == 0.0
