@@ -74,10 +74,8 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
         # Clear existing transactions for idempotency
         db.query(Transaction).filter(Transaction.user_id == MOCK_USER_ID).delete()
 
-        for tx in transactions_data:
-            db_tx = Transaction(**tx, user_id=MOCK_USER_ID)
-            db.add(db_tx)
-
+        db_txs = [Transaction(**tx, user_id=MOCK_USER_ID) for tx in transactions_data]
+        db.add_all(db_txs)
         db.commit()
 
         # Process transactions into lots and calculate taxes
@@ -138,10 +136,8 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
         # Clear existing transactions for idempotency
         db.query(Transaction).filter(Transaction.user_id == MOCK_USER_ID).delete()
 
-        for tx in transactions_data:
-            db_tx = Transaction(**tx, user_id=MOCK_USER_ID)
-            db.add(db_tx)
-
+        db_txs = [Transaction(**tx, user_id=MOCK_USER_ID) for tx in transactions_data]
+        db.add_all(db_txs)
         db.commit()
 
         # Process transactions into lots and calculate taxes
