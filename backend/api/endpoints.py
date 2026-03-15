@@ -1,15 +1,24 @@
+import io
+import json
+import logging
+import os
+import uuid
+from datetime import date
+from typing import Dict, Optional
+
+import pandas as pd
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
 from backend.models.database import get_db
 from backend.models.schema import Transaction, Lot, TaxCalculation
 from backend.parsers.shareworks_parser import parse_shareworks
 from backend.parsers.fidelity_parser import parse_fidelity
 from backend.parsers.generic_parser import infer_schema_with_ai, parse_generic_with_mapping
 from backend.services.tax_engine import process_transactions
-from pydantic import BaseModel
-import pandas as pd
-import io
-import logging
+from backend.services.portfolio_service import get_portfolio
+from backend.services.trade_simulator import simulate_trade
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +62,6 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
             sample = df.head(20).to_dict(orient="records")
             inferred_mapping = infer_schema_with_ai(header, sample)
 
-            import uuid
-            import os
             _, ext = os.path.splitext(filename_lower)
             temp_filename = str(uuid.uuid4()) + ext
 
@@ -100,9 +107,6 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
     Confirm mapping for generic file upload and process transactions.
     """
     try:
-        import os
-        import uuid
-
         # Sanitize filename to strictly be a UUID to prevent path traversal
         try:
             base_name, ext = os.path.splitext(filename)
@@ -170,11 +174,6 @@ def get_results(db: Session = Depends(get_db)):
     results = db.query(TaxCalculation).filter(TaxCalculation.user_id == MOCK_USER_ID).order_by(TaxCalculation.date).all()
     return results
 
-from backend.services.portfolio_service import get_portfolio
-from backend.services.trade_simulator import simulate_trade
-from datetime import date
-from typing import Dict, Optional
-
 class SimulateTradeRequest(BaseModel):
     symbol: str
     shares: float
@@ -190,7 +189,6 @@ def api_get_portfolio(manual_prices: Optional[str] = None, db: Session = Depends
     """
     prices_dict = {}
     if manual_prices:
-        import json
         try:
             prices_dict = json.loads(manual_prices)
         except Exception:
