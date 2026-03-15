@@ -153,3 +153,16 @@ def test_get_tt_buy_rate_missing_multiplier_fallback():
 
     # 2024 fallback is 83.2, check lowercase
     assert get_tt_buy_rate('xxx', date(2024, 1, 1)) == 83.2
+
+def test_get_tt_buy_rate_with_whitespace():
+    """Test get_tt_buy_rate with leading/trailing whitespaces."""
+    dt = date(2023, 1, 15)  # Cache date
+    assert fx_service.get_tt_buy_rate(" USD ", dt) == 81.50
+
+    # Non-cache date for multipliers
+    dt2 = date(2023, 10, 10)  # Uses 2023 year rate (82.5)
+
+    assert fx_service.get_tt_buy_rate(" EUR", dt2) == 82.5 * 1.08
+    assert fx_service.get_tt_buy_rate("GBP ", dt2) == 82.5 * 1.25
+    assert fx_service.get_tt_buy_rate("  CHF  ", dt2) == 82.5 * 1.12
+    assert fx_service.get_tt_buy_rate(" inr ", dt2) == 1.0

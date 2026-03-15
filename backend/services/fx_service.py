@@ -29,10 +29,10 @@ class FXService:
         Mock implementation of SBI TT buying rate.
         In a real app, this would query an API or a database of historical rates.
         """
-        if currency.upper() == "INR":
+        if currency.strip().upper() == "INR":
             return 1.0
 
-        rate = self._cache.get((dt, currency.upper()))
+        rate = self._cache.get((dt, currency.strip().upper()))
         if rate is not None:
             return rate
 
@@ -45,7 +45,7 @@ class FXService:
         }
         usd_rate = year_rates.get(dt.year, self.default_rate)
 
-        multiplier = self.currency_multipliers.get(currency.upper(), 1.0)
+        multiplier = self.currency_multipliers.get(currency.strip().upper(), 1.0)
         return usd_rate * multiplier
 
 fx_service = FXService()
