@@ -208,17 +208,19 @@ def test_calculate_tax_no_sales(client, db_session):
     results = response.json()
     assert len(results) == 0  # No sales means no tax results
 
-def test_cors_configuration():
-    """Test that CORS is configured based on ALLOWED_ORIGINS env var"""
+def test_cors_configuration(client):
+    """Test that CORS is configured correctly"""
+    # Test with a specific origin
+    # Since app is initialized once, we check its middleware state
     from fastapi.middleware.cors import CORSMiddleware
 
-    has_cors = False
-    for middleware in app.user_middleware:
-        if middleware.cls == CORSMiddleware:
-            has_cors = True
-            break
+    cors_middleware = next((m for m in app.user_middleware if m.cls == CORSMiddleware), None)
+    assert cors_middleware is not None, "CORS middleware should be configured"
 
-    assert has_cors, "CORS middleware should be configured"
+    # Verify behavior via headers
+    # If ALLOWED_ORIGINS is empty (default), no Access-Control-Allow-Origin should be present
+    response = client.get("/", headers={"Origin": "http://malicious.com"})
+    assert "access-control-allow-origin" not in response.headers
 
 def test_upload_empty_csv(client):
     """Test uploading an empty CSV file"""
