@@ -1,18 +1,28 @@
 from datetime import date
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from backend.models.schema import TransactionType
-from backend.models.database import engine, Base, get_db
+from backend.models.database import Base
 from backend.models.schema import Lot
 from backend.services.fifo_engine import match_sell_fifo
 from backend.models.schema import Transaction as DBTransaction
 from backend.models.transaction import Transaction
 
-Base.metadata.drop_all(bind=engine)
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 Base.metadata.create_all(bind=engine)
 
 def match_lots(transactions):
     matches = []
     # Simulate DB state
-    with next(get_db()) as db:
+    db = TestingSessionLocal()
+    try:
         db.query(Lot).delete()
         db.commit()
 
@@ -51,6 +61,8 @@ def match_lots(transactions):
                     matches.append((buy_tx, tx, r['shares_matched']))
 
         return matches
+    finally:
+        db.close()
 
 
 def test_fifo_matching():
