@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.endpoints import router
@@ -14,6 +15,8 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource
+
+logger = logging.getLogger(__name__)
 
 # Set up resource for service identification
 resource = Resource.create({
@@ -51,26 +54,26 @@ def run_migrations():
             with engine.connect() as conn:
                 conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lot_symbol_lower_user ON lots (user_id, lower(symbol))"))
                 conn.commit()
-            print("Functional index 'idx_lot_symbol_lower_user' ensured.")
-        except Exception as e:
-            print(f"Error creating functional index: {e}")
+            logger.info("Functional index 'idx_lot_symbol_lower_user' ensured")
+        except Exception:
+            logger.error("Error creating functional index")
 
     if 'lots' in inspector.get_table_names():
         columns = [col['name'] for col in inspector.get_columns('lots')]
         if 'currency' not in columns:
-            print("Adding 'currency' column to 'lots' table...")
+            logger.info("Adding 'currency' column to 'lots' table")
             with engine.connect() as conn:
                 conn.execute(text("ALTER TABLE lots ADD COLUMN currency VARCHAR"))
                 conn.commit()
-            print("Column 'currency' added successfully.")
+            logger.info("Column 'currency' added successfully")
 
     if 'transactions' in inspector.get_table_names():
         if engine.dialect.name == 'postgresql':
             with engine.execution_options(isolation_level="AUTOCOMMIT").connect() as conn:
                 try:
                     conn.execute(text("ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'OPTION_EXERCISE'"))
-                except Exception as e:
-                    print(f"Enum modification error: {e}")
+                except Exception:
+                    logger.error("Enum modification error")
                     raise
         elif engine.dialect.name == 'sqlite':
             with engine.connect() as conn:

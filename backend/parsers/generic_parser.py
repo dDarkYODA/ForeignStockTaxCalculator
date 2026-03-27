@@ -1,8 +1,11 @@
+import logging
 import pandas as pd
 import json
 import os
 from openai import OpenAI
 from backend.models.schema import TransactionType
+
+logger = logging.getLogger(__name__)
 
 def infer_schema_with_ai(header_row, sample_rows=None):
     if isinstance(header_row, str) and sample_rows is None:
@@ -61,8 +64,8 @@ def infer_schema_with_ai(header_row, sample_rows=None):
 
         else:
             return _heuristic_fallback(header_row)
-    except Exception as e:
-        print(f"Error calling AI: {e}")
+    except Exception:
+        logger.error("AI schema inference failed")
         return _heuristic_fallback(header_row)
 
 def _heuristic_fallback(header_row):
@@ -193,8 +196,8 @@ def parse_generic_with_mapping(df, mapping=None) -> list:
                 "currency": currency,
                 "broker": "Generic"
             })
-        except Exception as e:
-            print(f"Error parsing generic row {index}: {e}")
+        except Exception:
+            logger.error("Error parsing row in generic statement")
             continue
 
     return transactions
