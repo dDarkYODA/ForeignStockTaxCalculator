@@ -1,7 +1,10 @@
+import logging
 import pandas as pd
 from datetime import datetime
 from backend.models.schema import TransactionType
 import io
+
+logger = logging.getLogger(__name__)
 
 def parse_shareworks(df) -> list:
     if isinstance(df, str):
@@ -73,9 +76,9 @@ def parse_shareworks(df) -> list:
                 "currency": "USD", # Default to USD for shareworks typically
                 "broker": "Shareworks"
             })
-        except Exception as e:
+        except Exception:
             # Skip rows that can't be parsed
-            print(f"Error parsing row {index}: {e}")
+            logger.error("Error parsing row in Shareworks statement")
             continue
 
     return transactions

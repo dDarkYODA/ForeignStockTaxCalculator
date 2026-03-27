@@ -1,7 +1,9 @@
+import logging
 import pandas as pd
 from datetime import datetime
-import pandas as pd
 from backend.models.schema import TransactionType
+
+logger = logging.getLogger(__name__)
 
 def parse_fidelity(df) -> list:
     if isinstance(df, str):
@@ -71,8 +73,8 @@ def parse_fidelity(df) -> list:
                 "currency": "USD", # Default to USD
                 "broker": "Fidelity"
             })
-        except Exception as e:
-            print(f"Error parsing row {index}: {e}")
+        except Exception:
+            logger.error("Error parsing row in Fidelity statement")
             continue
 
     return transactions

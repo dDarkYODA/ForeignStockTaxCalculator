@@ -92,11 +92,11 @@ async def upload_file(file: UploadFile = File(...), broker: str = "generic", db:
 
     except HTTPException:
         raise
-    except ValueError as ve:
-        logger.warning(f"Validation error: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve)) from None
-    except Exception as e:
-        print(f"Error processing upload: {e}")
+    except ValueError:
+        logger.warning("Validation error during file upload")
+        raise HTTPException(status_code=400, detail="Invalid data in upload") from None
+    except Exception:
+        logger.error("Error processing upload")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/confirm-mapping/{filename}")
@@ -151,11 +151,11 @@ async def confirm_mapping(filename: str, confirmation: MappingConfirmation, db: 
 
     except HTTPException:
         raise
-    except ValueError as ve:
-        logger.warning(f"Validation error: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve)) from None
-    except Exception as e:
-        print(f"Error processing upload: {e}")
+    except ValueError:
+        logger.warning("Validation error during mapping confirmation")
+        raise HTTPException(status_code=400, detail="Invalid mapping data") from None
+    except Exception:
+        logger.error("Error processing mapping confirmation")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/transactions")
@@ -207,11 +207,11 @@ def api_simulate_trade(request: SimulateTradeRequest, db: Session = Depends(get_
             currency=request.currency,
             sale_date=request.date
         )
-    except ValueError as e:
-        logger.warning(f"Validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from None
-    except Exception as e:
-        print(f"Error simulating trade: {e}")
+    except ValueError:
+        logger.warning("Validation error during trade simulation")
+        raise HTTPException(status_code=400, detail="Invalid simulation parameters") from None
+    except Exception:
+        logger.error("Error simulating trade")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/holdings")
